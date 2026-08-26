@@ -14,12 +14,17 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   Draft, each wired to its own `Checkout Started` metric and its own three
   French templates, with the French subject lines from `src/templates.js`:
 
-  | Store | Flow | Trigger metric | Real domain |
-  |-------|------|----------------|-------------|
-  | Store One   | `U4HquB` | `RSjLxj` | `pharmafr.shop` |
-  | Store Two   | `S8sLpv` | `TtJ96p` | `sourcevie.shop` |
-  | Store Three | `SnVMu3` | `X2dDNn` | `lasantefr.shop` |
-  | Store Four  | `SANymG` | `Xy2rYJ` | unknown -- no events yet |
+  | Store | Brand shown | Flow | Trigger metric | Domain |
+  |-------|-------------|------|----------------|--------|
+  | store1 | PHARMA FR ™    | `WrMQmf` | `RSjLxj` | `pharmafr.shop` |
+  | store2 | VIGILIA        | `UL2dkF` | `TtJ96p` | `sourcevie.shop` |
+  | store3 | PELVIOR™       | `TkHBqD` | `X2dDNn` | `lasantefr.shop` |
+  | store4 | City Pharma FR | `THQSZ6` | `Xy2rYJ` | `citypharmafr.shop` |
+
+  `config/stores.json` keeps two names per store on purpose: `displayName` is
+  the customer-facing brand (email header, From name), while `name` keys the
+  template naming scheme (`[Store One] ...`). Renaming `name` would orphan the
+  deployed templates rather than update them, since `deploy.js` matches by name.
 
   Delays 1h / 23h / 2d (so 1h, 24h, 72h cumulative), profile filter excludes
   anyone who placed an order since flow start or was in the flow in the last
@@ -32,7 +37,15 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   - Prices rendered as a bare number with no currency at all (`65.80`). Now
     `65.80 €` -- `currency` is a per-store config value.
   - The header fell back to `{{ organization.name }}`, which in these accounts
-    is `dropalizak2@gmail.com`. It now uses the configured store name.
+    is `dropalizak2@gmail.com`. It now uses the configured `displayName`.
+
+- Per-store branding applied: logo, brand colour and a readable button. Button
+  label colour is a config value (`brand.accentText`) rather than always white,
+  because two of the four accents are light -- white on store 2's orange is
+  3.28:1 and on store 3's gold 2.15:1, both below the 4.5:1 minimum. Those two
+  use dark labels (5.31:1 and 6.53:1). Store 4's logo is white, so its header
+  band is set to the brand colour (`brand.headerBackground`); a white logo on
+  the white card would be invisible.
 
 - The checkouts themselves are already **EUR / fr-FR** (`$currency_code: EUR`,
   `Customer Locale: fr-FR`). The `preferred_currency: USD` on the Klaviyo
@@ -70,17 +83,15 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   Unverified until a key is available: whether the endpoint has since gone GA
   on a stable revision, and the exact definition shape (the retargeting logic
   is tested against a synthetic definition only).
-- **Branding -- blocked, needs input.** Logo and colours cannot be pulled
-  automatically: there are no Shopify credentials in the environment, the four
-  storefronts are blocked by the network egress policy (403 at the proxy), and
-  Klaviyo stores no brand assets (`/api/images/` is empty, the account has no
-  logo field). Needs either Shopify Admin API tokens, the storefronts allowed
-  through egress, or the logo URL and hex colours pasted by hand.
-- **Store names are still placeholders.** "Store One".."Store Four" now appear
-  in the email header. Real names are needed. The product `vendor` seen in real
-  checkout events is recorded as `vendorSeen` in `config/stores.json`
-  (`PHARMA FR ™`, `VIGILIA`, `PELVIOR™`) but a product vendor is not
-  necessarily the store name, so it is not used for anything.
+- **Store 4's brand name is an assumption.** `City Pharma FR`, derived from
+  `citypharmafr.shop`. The other three come from the product `vendor` on real
+  checkout events; store 4 has no events yet. One line in `config/stores.json`
+  to correct, then rebuild that flow.
+- **Logo images are unverified.** The four logo URLs are on the storefronts,
+  which this environment cannot reach (403 at the egress proxy), so it was not
+  possible to confirm they load or what they look like. Recipients' email
+  clients fetch them directly, so this only matters if a URL is wrong -- the
+  test send will show it.
 - **Footer shows the wrong sender identity.** The legal footer renders
   `{{ organization.name }} · {{ organization.full_address }}`, which is
   `dropalizak2@gmail.com` and a blank US address. This is the CAN-SPAM/GDPR

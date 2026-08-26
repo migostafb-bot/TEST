@@ -4,11 +4,13 @@
     "domain": "pharmafr.shop",
     "apiKeyEnv": "KLAVIYO_STORE1_KEY",
     "brand": {
-      "logoUrl": "",
-      "primary": "#1a1a1a",
-      "accent": "#2f6fed",
+      "logoUrl": "https://pharmafr.shop/cdn/shop/files/ChatGPT_Image_Jul_14_2026_02_47_16_PM-Photoroom_1.png?v=1784015926&width=500",
+      "primary": "#122e25",
+      "accent": "#122e25",
+      "accentText": "#ffffff",
+      "headerBackground": "#ffffff",
       "background": "#f4f4f5",
-      "text": "#1a1a1a",
+      "text": "#122e25",
       "muted": "#6b7280"
     },
     "supportEmail": "support@example.com",
@@ -19,21 +21,23 @@
     "locale": "fr",
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
-      "fromLabel": "Store One"
+      "fromLabel": "PHARMA FR ™"
     },
     "currency": "EUR",
-    "vendorSeen": "PHARMA FR ™"
+    "displayName": "PHARMA FR ™"
   },
   "store2": {
     "name": "Store Two",
     "domain": "sourcevie.shop",
     "apiKeyEnv": "KLAVIYO_STORE2_KEY",
     "brand": {
-      "logoUrl": "",
-      "primary": "#1a1a1a",
-      "accent": "#2f6fed",
+      "logoUrl": "https://sourcevie.shop/cdn/shop/files/ChatGPT_Image_Aug_16_2026_12_51_18_AM_f888e706-f34c-4a4a-8150-9bccb702177d.png?v=1786835296&width=500",
+      "primary": "#173815",
+      "accent": "#e9662c",
+      "accentText": "#1a1a1a",
+      "headerBackground": "#ffffff",
       "background": "#f4f4f5",
-      "text": "#1a1a1a",
+      "text": "#173815",
       "muted": "#6b7280"
     },
     "supportEmail": "support@example.com",
@@ -44,21 +48,23 @@
     "locale": "fr",
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
-      "fromLabel": "Store Two"
+      "fromLabel": "VIGILIA"
     },
     "currency": "EUR",
-    "vendorSeen": "VIGILIA"
+    "displayName": "VIGILIA"
   },
   "store3": {
     "name": "Store Three",
     "domain": "lasantefr.shop",
     "apiKeyEnv": "KLAVIYO_STORE3_KEY",
     "brand": {
-      "logoUrl": "",
-      "primary": "#1a1a1a",
-      "accent": "#2f6fed",
+      "logoUrl": "https://lasantefr.shop/cdn/shop/files/ChatGPT_Image_Aug_19_2026_08_33_12_PM_1_b7dfcdbf-9056-476a-a82a-368cd8b58f35.png?v=1787442866&width=500",
+      "primary": "#1e2b48",
+      "accent": "#e0a654",
+      "accentText": "#1e2b48",
+      "headerBackground": "#ffffff",
       "background": "#f4f4f5",
-      "text": "#1a1a1a",
+      "text": "#1e2b48",
       "muted": "#6b7280"
     },
     "supportEmail": "support@example.com",
@@ -69,19 +75,21 @@
     "locale": "fr",
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
-      "fromLabel": "Store Three"
+      "fromLabel": "PELVIOR™"
     },
     "currency": "EUR",
-    "vendorSeen": "PELVIOR™"
+    "displayName": "PELVIOR™"
   },
   "store4": {
     "name": "Store Four",
-    "domain": "store-four.myshopify.com",
+    "domain": "citypharmafr.shop",
     "apiKeyEnv": "KLAVIYO_STORE4_KEY",
     "brand": {
-      "logoUrl": "",
-      "primary": "#1a1a1a",
-      "accent": "#2f6fed",
+      "logoUrl": "https://citypharmafr.shop/cdn/shop/files/ChatGPT_Image_Aug_21_2026_02_05_34_AM_1.png?v=1787274432&width=500",
+      "primary": "#b95133",
+      "accent": "#b95133",
+      "accentText": "#ffffff",
+      "headerBackground": "#b95133",
       "background": "#f4f4f5",
       "text": "#1a1a1a",
       "muted": "#6b7280"
@@ -94,8 +102,9 @@
     "locale": "fr",
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
-      "fromLabel": "Store Four"
+      "fromLabel": "City Pharma FR"
     },
-    "currency": "EUR"
+    "currency": "EUR",
+    "displayName": "City Pharma FR"
   }
 }

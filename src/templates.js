@@ -120,7 +120,7 @@ const layout = (brand, { preheader, body, t, name }) => `<!doctype html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${brand.background};">
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:8px;">
-<tr><td align="center" style="padding:32px 32px 16px;">
+<tr><td align="center" bgcolor="${brand.headerBackground}" style="padding:32px 32px 16px;background:${brand.headerBackground};border-radius:8px 8px 0 0;">
 ${brand.logoUrl
   ? `<img src="${brand.logoUrl}" alt="${name}" width="140" style="display:block;border:0;max-width:140px;height:auto;">`
   : `<span style="font:700 22px/1.2 Helvetica,Arial,sans-serif;color:${brand.text};">${name}</span>`}
@@ -144,7 +144,7 @@ ${t.footerHelp}
 const button = (brand, label) => `
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;">
 <tr><td align="center" bgcolor="${brand.accent}" style="border-radius:6px;">
-<a href="${CHECKOUT_URL}" style="display:inline-block;padding:14px 32px;font:700 15px/1 Helvetica,Arial,sans-serif;color:#ffffff;text-decoration:none;border-radius:6px;">${label}</a>
+<a href="${CHECKOUT_URL}" style="display:inline-block;padding:14px 32px;font:700 15px/1 Helvetica,Arial,sans-serif;color:${brand.accentText};text-decoration:none;border-radius:6px;">${label}</a>
 </td></tr>
 </table>`;
 
@@ -196,7 +196,7 @@ const reminder = (store) => {
     subject: t.reminder.subject,
     html: layout(store.brand, {
       t,
-      name: store.name,
+      name: store.displayName || store.name,
       preheader: t.reminder.preheader,
       body:
         heading(store.brand, t.reminder.heading) +
@@ -218,7 +218,7 @@ const objections = (store) => {
     subject: t.objections.subject,
     html: layout(store.brand, {
       t,
-      name: store.name,
+      name: store.displayName || store.name,
       preheader: t.objections.preheader,
       body:
         heading(store.brand, t.objections.heading) +
@@ -240,7 +240,7 @@ const incentive = (store) => {
     subject: isShipping ? t.incentive.subjectShipping : t.incentive.subjectDiscount,
     html: layout(store.brand, {
       t,
-      name: store.name,
+      name: store.displayName || store.name,
       preheader: t.incentive.preheader(code),
       body:
         heading(store.brand, isShipping ? t.incentive.headingShipping : t.incentive.headingDiscount) +

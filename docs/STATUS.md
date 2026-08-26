@@ -14,18 +14,31 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   Draft, each wired to its own `Checkout Started` metric and its own three
   French templates, with the French subject lines from `src/templates.js`:
 
-  | Store | Flow | Trigger metric |
-  |-------|------|----------------|
-  | Store One   | `Wh7PQn` | `RSjLxj` |
-  | Store Two   | `Y7cHut` | `TtJ96p` |
-  | Store Three | `S2gKYZ` | `X2dDNn` |
-  | Store Four  | `XiVab4` | `Xy2rYJ` |
+  | Store | Flow | Trigger metric | Real domain |
+  |-------|------|----------------|-------------|
+  | Store One   | `U4HquB` | `RSjLxj` | `pharmafr.shop` |
+  | Store Two   | `S8sLpv` | `TtJ96p` | `sourcevie.shop` |
+  | Store Three | `SnVMu3` | `X2dDNn` | `lasantefr.shop` |
+  | Store Four  | `SANymG` | `Xy2rYJ` | unknown -- no events yet |
 
   Delays 1h / 23h / 2d (so 1h, 24h, 72h cumulative), profile filter excludes
   anyone who placed an order since flow start or was in the flow in the last
   7 days, re-entry 7 days -- all carried over from the original Store 1 flow.
 
-- The **original** Store 1 flow `XVDXis` is superseded. It was never wired to
+- Three template bugs found by checking a **real** Started Checkout payload
+  (`GET /api/events/`) rather than assuming the field names:
+  - `item.image_url` **does not exist**. Every product image was broken in every
+    email. The real path is `item.product.images.0.src`.
+  - Prices rendered as a bare number with no currency at all (`65.80`). Now
+    `65.80 €` -- `currency` is a per-store config value.
+  - The header fell back to `{{ organization.name }}`, which in these accounts
+    is `dropalizak2@gmail.com`. It now uses the configured store name.
+
+- The checkouts themselves are already **EUR / fr-FR** (`$currency_code: EUR`,
+  `Customer Locale: fr-FR`). The `preferred_currency: USD` on the Klaviyo
+  accounts is only an account display setting and does not affect the emails.
+
+- The **original** Store 1 flow `XVDXis` has been deleted. It was never wired to
   the French templates: its three emails used stock Klaviyo drag-and-drop
   templates from 2024-10-22 (47KB `SYSTEM_DRAGGABLE`, English), emails 2 and 3
   shared the subject "Your cart is about to expire.", and the From name was
@@ -57,10 +70,22 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   Unverified until a key is available: whether the endpoint has since gone GA
   on a stable revision, and the exact definition shape (the retargeting logic
   is tested against a synthetic definition only).
-- **Branding.** `config/stores.json` still holds placeholder colors and no
-  logo, so emails show the store name as text with a generic blue button. The
-  rendered HTML is currently *byte-identical across all four stores* -- the
-  templates carry no per-store branding at all yet.
+- **Branding -- blocked, needs input.** Logo and colours cannot be pulled
+  automatically: there are no Shopify credentials in the environment, the four
+  storefronts are blocked by the network egress policy (403 at the proxy), and
+  Klaviyo stores no brand assets (`/api/images/` is empty, the account has no
+  logo field). Needs either Shopify Admin API tokens, the storefronts allowed
+  through egress, or the logo URL and hex colours pasted by hand.
+- **Store names are still placeholders.** "Store One".."Store Four" now appear
+  in the email header. Real names are needed. The product `vendor` seen in real
+  checkout events is recorded as `vendorSeen` in `config/stores.json`
+  (`PHARMA FR ™`, `VIGILIA`, `PELVIOR™`) but a product vendor is not
+  necessarily the store name, so it is not used for anything.
+- **Footer shows the wrong sender identity.** The legal footer renders
+  `{{ organization.name }} · {{ organization.full_address }}`, which is
+  `dropalizak2@gmail.com` and a blank US address. This is the CAN-SPAM/GDPR
+  sender block -- fix it in each Klaviyo account's settings, not in the
+  template.
 
 - **Sending domain (open, deliberate).** All four flows send from
   `mail@pharmafer.shop`, which is Store 1's domain, chosen so the flows could be
@@ -91,6 +116,13 @@ Established against the live accounts this session:
   revision `2025-10-15`. `src/klaviyo.js` pins `FLOWS_API_REVISION` for this;
   the flow `definition` field is a 400 on the older `2024-10-15` the template
   deploys use.
+- Flow-owned templates are **read-only and unlisted**: readable by id, absent
+  from `GET /api/templates/`, and 404 on PATCH. Combined with create-only
+  definitions this means **changing email content requires rebuilding the
+  flow** -- `npm run deploy` updates the named template but not what the flow
+  sends. `src/deploy-flow.js` is the only path.
+- Klaviyo normalises stored HTML (`&nbsp;&euro;` comes back as literal
+  characters), so a byte comparison against the built HTML always differs.
 - Flow definitions are **create-only**. `PATCH /api/flows/:id` accepts `status`
   and rejects `definition` outright ("'definition' is not a valid field"), and
   `/api/flow-messages/:id` is read-only -- PATCH and PUT both 405 on every

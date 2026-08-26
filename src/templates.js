@@ -87,9 +87,26 @@ const COPY = {
 
 const copyFor = (store) => COPY[store.locale] || COPY.en;
 
+/**
+ * Shopify sends `line_price` as a bare number, so the template has to add the
+ * symbol. French convention puts it after the amount, separated by a
+ * non-breaking space. The decimal separator stays a dot: Klaviyo's floatformat
+ * has no locale-aware variant, so "65.80 €" is as close as the template gets.
+ */
+const CURRENCY = {
+  EUR: { symbol: '&euro;', after: true },
+  USD: { symbol: '$', after: false },
+};
+
+const price = (store, expr) => {
+  const c = CURRENCY[store.currency] || CURRENCY.EUR;
+  const amount = `{{ ${expr}|floatformat:2 }}`;
+  return c.after ? `${amount}&nbsp;${c.symbol}` : `${c.symbol}${amount}`;
+};
+
 const CHECKOUT_URL = '{{ event.extra.checkout_url|default:organization.url }}';
 
-const layout = (brand, { preheader, body, t }) => `<!doctype html>
+const layout = (brand, { preheader, body, t, name }) => `<!doctype html>
 <html lang="${t.lang}">
 <head>
 <meta charset="utf-8">
@@ -105,8 +122,8 @@ const layout = (brand, { preheader, body, t }) => `<!doctype html>
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:8px;">
 <tr><td align="center" style="padding:32px 32px 16px;">
 ${brand.logoUrl
-  ? `<img src="${brand.logoUrl}" alt="{{ organization.name }}" width="140" style="display:block;border:0;max-width:140px;height:auto;">`
-  : `<span style="font:700 22px/1.2 Helvetica,Arial,sans-serif;color:${brand.text};">{{ organization.name }}</span>`}
+  ? `<img src="${brand.logoUrl}" alt="${name}" width="140" style="display:block;border:0;max-width:140px;height:auto;">`
+  : `<span style="font:700 22px/1.2 Helvetica,Arial,sans-serif;color:${brand.text};">${name}</span>`}
 </td></tr>
 ${body}
 <tr><td style="padding:24px 32px 32px;border-top:1px solid #e5e7eb;">
@@ -131,23 +148,32 @@ const button = (brand, label) => `
 </td></tr>
 </table>`;
 
-/** Renders the abandoned line items with image, title and price. */
-const cart = (brand) => `
+/**
+ * Renders the abandoned line items with image, title and price.
+ *
+ * The image lives at `product.images.0.src` -- the Shopify checkout payload has
+ * no `image_url` on a line item, so addressing it that way renders a broken
+ * image in every email. Verified against a real Started Checkout event.
+ */
+const cart = (store) => {
+  const brand = store.brand;
+  return `
 <tr><td style="padding:8px 32px 24px;">
 {% for item in event.extra.line_items %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
 <tr>
 <td width="88" valign="top">
-<img src="{{ item.image_url }}" alt="{{ item.title }}" width="80" style="display:block;border:0;width:80px;height:auto;border-radius:6px;">
+<img src="{{ item.product.images.0.src }}" alt="{{ item.title }}" width="80" style="display:block;border:0;width:80px;height:auto;border-radius:6px;">
 </td>
 <td valign="top" style="padding-left:16px;">
 <p style="margin:0 0 4px;font:600 15px/1.4 Helvetica,Arial,sans-serif;color:${brand.text};">{{ item.title }}</p>
-<p style="margin:0;font:400 14px/1.4 Helvetica,Arial,sans-serif;color:${brand.muted};">{{ item.line_price|floatformat:2 }}</p>
+<p style="margin:0;font:400 14px/1.4 Helvetica,Arial,sans-serif;color:${brand.muted};">${price(store, 'item.line_price')}</p>
 </td>
 </tr>
 </table>
 {% endfor %}
 </td></tr>`;
+};
 
 const heading = (brand, text) => `
 <tr><td style="padding:8px 32px 0;">
@@ -170,11 +196,12 @@ const reminder = (store) => {
     subject: t.reminder.subject,
     html: layout(store.brand, {
       t,
+      name: store.name,
       preheader: t.reminder.preheader,
       body:
         heading(store.brand, t.reminder.heading) +
         paragraph(store.brand, t.reminder.body) +
-        cart(store.brand) +
+        cart(store) +
         cta(store.brand, t.reminder.cta),
     }),
   };
@@ -191,12 +218,13 @@ const objections = (store) => {
     subject: t.objections.subject,
     html: layout(store.brand, {
       t,
+      name: store.name,
       preheader: t.objections.preheader,
       body:
         heading(store.brand, t.objections.heading) +
         paragraph(store.brand, t.objections.intro) +
         paragraph(store.brand, points) +
-        cart(store.brand) +
+        cart(store) +
         cta(store.brand, t.objections.cta),
     }),
   };
@@ -212,11 +240,12 @@ const incentive = (store) => {
     subject: isShipping ? t.incentive.subjectShipping : t.incentive.subjectDiscount,
     html: layout(store.brand, {
       t,
+      name: store.name,
       preheader: t.incentive.preheader(code),
       body:
         heading(store.brand, isShipping ? t.incentive.headingShipping : t.incentive.headingDiscount) +
         paragraph(store.brand, t.incentive.body(code)) +
-        cart(store.brand) +
+        cart(store) +
         cta(store.brand, t.incentive.cta),
     }),
   };

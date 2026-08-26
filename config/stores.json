@@ -1,7 +1,7 @@
 {
   "store1": {
     "name": "Store One",
-    "domain": "store-one.myshopify.com",
+    "domain": "pharmafr.shop",
     "apiKeyEnv": "KLAVIYO_STORE1_KEY",
     "brand": {
       "logoUrl": "",
@@ -20,11 +20,13 @@
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
       "fromLabel": "Store One"
-    }
+    },
+    "currency": "EUR",
+    "vendorSeen": "PHARMA FR ™"
   },
   "store2": {
     "name": "Store Two",
-    "domain": "store-two.myshopify.com",
+    "domain": "sourcevie.shop",
     "apiKeyEnv": "KLAVIYO_STORE2_KEY",
     "brand": {
       "logoUrl": "",
@@ -43,11 +45,13 @@
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
       "fromLabel": "Store Two"
-    }
+    },
+    "currency": "EUR",
+    "vendorSeen": "VIGILIA"
   },
   "store3": {
     "name": "Store Three",
-    "domain": "store-three.myshopify.com",
+    "domain": "lasantefr.shop",
     "apiKeyEnv": "KLAVIYO_STORE3_KEY",
     "brand": {
       "logoUrl": "",
@@ -66,7 +70,9 @@
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
       "fromLabel": "Store Three"
-    }
+    },
+    "currency": "EUR",
+    "vendorSeen": "PELVIOR™"
   },
   "store4": {
     "name": "Store Four",
@@ -89,6 +95,7 @@
     "sending": {
       "fromEmail": "mail@pharmafer.shop",
       "fromLabel": "Store Four"
-    }
+    },
+    "currency": "EUR"
   }
 }

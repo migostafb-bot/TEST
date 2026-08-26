@@ -6,7 +6,8 @@
   "scripts": {
     "preview": "node src/preview.js",
     "deploy": "node src/deploy.js",
-    "deploy:dry": "node src/deploy.js --dry-run"
+    "deploy:dry": "node src/deploy.js --dry-run",
+    "bundle": "node src/bundle.js"
   },
   "engines": { "node": ">=18" }
 }

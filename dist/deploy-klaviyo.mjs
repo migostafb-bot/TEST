@@ -1,0 +1,247 @@
+#!/usr/bin/env node
+/* Klaviyo abandoned-checkout templates - standalone deployer. Node 18+. */
+/**
+ * Minimal Klaviyo API client.
+ * Docs: https://developers.klaviyo.com/en/reference/api_overview
+ *
+ * The API is date-versioned via the `revision` header. Bump API_REVISION only
+ * after checking the changelog — older revisions keep working, so there is no
+ * rush to move.
+ */
+
+const BASE_URL = 'https://a.klaviyo.com/api';
+const API_REVISION = '2024-10-15';
+
+class KlaviyoError extends Error {
+  constructor(status, body) {
+    const detail = body?.errors?.map((e) => e.detail).join('; ') || 'unknown error';
+    super(`Klaviyo API ${status}: ${detail}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+class KlaviyoClient {
+  constructor(apiKey) {
+    if (!apiKey) throw new Error('Missing Klaviyo API key');
+    this.apiKey = apiKey;
+  }
+
+  async request(method, path, payload) {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers: {
+        Authorization: `Klaviyo-API-Key ${this.apiKey}`,
+        revision: API_REVISION,
+        accept: 'application/vnd.api+json',
+        ...(payload ? { 'content-type': 'application/vnd.api+json' } : {}),
+      },
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
+
+    const body = res.status === 204 ? null : await res.json().catch(() => null);
+    if (!res.ok) throw new KlaviyoError(res.status, body);
+    return body;
+  }
+
+  listTemplates() {
+    return this.request('GET', '/templates/');
+  }
+
+  createTemplate({ name, html, text }) {
+    return this.request('POST', '/templates/', {
+      data: { type: 'template', attributes: { name, editor_type: 'CODE', html, text } },
+    });
+  }
+
+  updateTemplate(id, { name, html, text }) {
+    return this.request('PATCH', `/templates/${id}/`, {
+      data: { type: 'template', id, attributes: { name, editor_type: 'CODE', html, text } },
+    });
+  }
+
+  /** Confirms the key works and reports what it can reach. */
+  whoami() {
+    return this.request('GET', '/accounts/');
+  }
+}
+
+
+/**
+ * Abandoned-checkout email templates.
+ *
+ * Table-based layout on purpose: Outlook (Word rendering engine) ignores most
+ * modern CSS, so nested tables with inline styles are the only thing that holds
+ * up across Gmail, Outlook and Apple Mail.
+ *
+ * Liquid variables come from Klaviyo's Shopify "Started Checkout" event. Names
+ * are verified against a real event payload in the account before deploy --
+ * see `npm run verify`.
+ */
+
+const CHECKOUT_URL = '{{ event.extra.checkout_url|default:organization.url }}';
+
+const layout = (brand, { preheader, body }) => `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<title>${preheader}</title>
+</head>
+<body style="margin:0;padding:0;background:${brand.background};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${preheader}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${brand.background};">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:8px;">
+<tr><td align="center" style="padding:32px 32px 16px;">
+${brand.logoUrl
+  ? `<img src="${brand.logoUrl}" alt="{{ organization.name }}" width="140" style="display:block;border:0;max-width:140px;height:auto;">`
+  : `<span style="font:700 22px/1.2 Helvetica,Arial,sans-serif;color:${brand.text};">{{ organization.name }}</span>`}
+</td></tr>
+${body}
+<tr><td style="padding:24px 32px 32px;border-top:1px solid #e5e7eb;">
+<p style="margin:0 0 8px;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${brand.muted};">
+Questions? Just reply to this email.
+</p>
+<p style="margin:0;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${brand.muted};">
+{{ organization.name }} &middot; {{ organization.full_address }}<br>
+<a href="{% unsubscribe %}" style="color:${brand.muted};">Unsubscribe</a>
+</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+const button = (brand, label) => `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0;">
+<tr><td align="center" bgcolor="${brand.accent}" style="border-radius:6px;">
+<a href="${CHECKOUT_URL}" style="display:inline-block;padding:14px 32px;font:700 15px/1 Helvetica,Arial,sans-serif;color:#ffffff;text-decoration:none;border-radius:6px;">${label}</a>
+</td></tr>
+</table>`;
+
+/** Renders the abandoned line items with image, title and price. */
+const cart = (brand) => `
+<tr><td style="padding:8px 32px 24px;">
+{% for item in event.extra.line_items %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+<tr>
+<td width="88" valign="top">
+<img src="{{ item.image_url }}" alt="{{ item.title }}" width="80" style="display:block;border:0;width:80px;height:auto;border-radius:6px;">
+</td>
+<td valign="top" style="padding-left:16px;">
+<p style="margin:0 0 4px;font:600 15px/1.4 Helvetica,Arial,sans-serif;color:${brand.text};">{{ item.title }}</p>
+<p style="margin:0;font:400 14px/1.4 Helvetica,Arial,sans-serif;color:${brand.muted};">{{ item.line_price|floatformat:2 }}</p>
+</td>
+</tr>
+</table>
+{% endfor %}
+</td></tr>`;
+
+const heading = (brand, text) => `
+<tr><td style="padding:8px 32px 0;">
+<h1 style="margin:0 0 12px;font:700 24px/1.3 Helvetica,Arial,sans-serif;color:${brand.text};">${text}</h1>
+</td></tr>`;
+
+const paragraph = (brand, html) => `
+<tr><td style="padding:0 32px;">
+<p style="margin:0 0 16px;font:400 15px/1.6 Helvetica,Arial,sans-serif;color:${brand.text};">${html}</p>
+</td></tr>`;
+
+const cta = (brand, label) => `
+<tr><td style="padding:0 32px 8px;">${button(brand, label)}</td></tr>`;
+
+/* --- Email 1: +1h. No discount -- it protects margin and still converts best. --- */
+const reminder = (store) => ({
+  name: `[${store.name}] Abandoned Checkout 1 - Reminder`,
+  subject: 'You left something behind',
+  html: layout(store.brand, {
+    preheader: 'Your cart is still saved - pick up where you left off.',
+    body:
+      heading(store.brand, 'Still thinking it over?') +
+      paragraph(store.brand, 'We saved your cart, so you can finish whenever you are ready.') +
+      cart(store.brand) +
+      cta(store.brand, 'Return to checkout'),
+  }),
+});
+
+/* --- Email 2: +24h. Handles the trust objection, not the price objection. --- */
+const objections = (store) => ({
+  name: `[${store.name}] Abandoned Checkout 2 - Why shop with us`,
+  subject: 'Still available - and here is our promise',
+  html: layout(store.brand, {
+    preheader: 'Free returns, secure checkout, real people on support.',
+    body:
+      heading(store.brand, 'Your cart is still waiting') +
+      paragraph(store.brand, 'If something gave you pause, here is what you should know:') +
+      paragraph(
+        store.brand,
+        '<strong>Easy returns</strong> &middot; send it back if it is not right<br>' +
+        '<strong>Secure checkout</strong> &middot; your payment details stay encrypted<br>' +
+        '<strong>Real support</strong> &middot; reply to this email and a person answers'
+      ) +
+      cart(store.brand) +
+      cta(store.brand, 'Complete my order'),
+  }),
+});
+
+/* --- Email 3: +72h. Incentive last, so we never discount a sale we'd have won. --- */
+const incentive = (store) => {
+  const isShipping = store.incentive.type === 'free_shipping';
+  const offer = isShipping ? 'free shipping' : 'a discount';
+  return {
+    name: `[${store.name}] Abandoned Checkout 3 - Incentive`,
+    subject: isShipping ? 'Free shipping on your cart' : 'A little something off your cart',
+    html: layout(store.brand, {
+      preheader: `Use code ${store.incentive.code} before your cart expires.`,
+      body:
+        heading(store.brand, `Here is ${offer}`) +
+        paragraph(
+          store.brand,
+          `Use code <strong>${store.incentive.code}</strong> at checkout. We are holding your cart a little longer.`
+        ) +
+        cart(store.brand) +
+        cta(store.brand, 'Claim my offer'),
+    }),
+  };
+};
+
+const buildTemplates = (store) => [reminder(store), objections(store), incentive(store)];
+
+
+/* --- standalone entry point --- */
+const [apiKey, storeName = 'My Store'] = process.argv.slice(2);
+if (!apiKey || !apiKey.startsWith('pk_')) {
+  console.error('Usage: node deploy-klaviyo.mjs <private-api-key> "<Store Name>"');
+  process.exit(1);
+}
+
+const store = {
+  name: storeName,
+  brand: { logoUrl: '', primary: '#1a1a1a', accent: '#2f6fed', background: '#f4f4f5', text: '#1a1a1a', muted: '#6b7280' },
+  incentive: { type: 'free_shipping', code: 'COMEBACK' },
+};
+
+const toPlainText = (html) =>
+  html.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')
+      .replace(/&middot;/g, '-').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+const run = async () => {
+  const client = new KlaviyoClient(apiKey);
+  console.log('Connecting to Klaviyo...');
+  const existing = await client.listTemplates();
+  const byName = new Map((existing?.data || []).map((t) => [t.attributes.name, t.id]));
+
+  for (const t of buildTemplates(store)) {
+    const payload = { name: t.name, html: t.html, text: toPlainText(t.html) };
+    const id = byName.get(t.name);
+    if (id) { await client.updateTemplate(id, payload); console.log('  updated  ' + t.name); }
+    else { await client.createTemplate(payload); console.log('  created  ' + t.name); }
+  }
+  console.log('\nDone. Open Klaviyo -> Content -> Templates to see them.');
+};
+
+run().catch((e) => { console.error('\nFAILED: ' + e.message); process.exit(1); });

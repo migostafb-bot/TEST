@@ -47,7 +47,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafer.shop",
+      "fromEmail": "mail@pharmafr.shop",
       "fromLabel": "VIGILIA"
     },
     "currency": "EUR",
@@ -74,7 +74,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafer.shop",
+      "fromEmail": "mail@pharmafr.shop",
       "fromLabel": "PELVIOR™"
     },
     "currency": "EUR",
@@ -101,7 +101,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafer.shop",
+      "fromEmail": "mail@pharmafr.shop",
       "fromLabel": "City Pharma FR"
     },
     "currency": "EUR",

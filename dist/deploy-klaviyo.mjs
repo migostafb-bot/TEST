@@ -50,13 +50,13 @@ class KlaviyoClient {
 
   createTemplate({ name, html, text }) {
     return this.request('POST', '/templates/', {
-      data: { type: 'template', attributes: { name, editor_type: 'CODE', html, text } },
+      data: { type: 'template', attributes: { name, html, text } },
     });
   }
 
   updateTemplate(id, { name, html, text }) {
     return this.request('PATCH', `/templates/${id}/`, {
-      data: { type: 'template', id, attributes: { name, editor_type: 'CODE', html, text } },
+      data: { type: 'template', id, attributes: { name, html, text } },
     });
   }
 

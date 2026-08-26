@@ -16,7 +16,11 @@
       "type": "free_shipping",
       "code": "RETOUR"
     },
-    "locale": "fr"
+    "locale": "fr",
+    "sending": {
+      "fromEmail": "mail@pharmafer.shop",
+      "fromLabel": "Store One"
+    }
   },
   "store2": {
     "name": "Store Two",
@@ -35,7 +39,11 @@
       "type": "free_shipping",
       "code": "RETOUR"
     },
-    "locale": "fr"
+    "locale": "fr",
+    "sending": {
+      "fromEmail": "mail@pharmafer.shop",
+      "fromLabel": "Store Two"
+    }
   },
   "store3": {
     "name": "Store Three",
@@ -54,7 +62,11 @@
       "type": "free_shipping",
       "code": "RETOUR"
     },
-    "locale": "fr"
+    "locale": "fr",
+    "sending": {
+      "fromEmail": "mail@pharmafer.shop",
+      "fromLabel": "Store Three"
+    }
   },
   "store4": {
     "name": "Store Four",
@@ -73,6 +85,10 @@
       "type": "free_shipping",
       "code": "RETOUR"
     },
-    "locale": "fr"
+    "locale": "fr",
+    "sending": {
+      "fromEmail": "mail@pharmafer.shop",
+      "fromLabel": "Store Four"
+    }
   }
 }

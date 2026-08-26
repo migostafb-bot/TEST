@@ -1,109 +1,121 @@
 /**
- * Transforms a flow definition fetched from one Klaviyo account into one that
- * can be POSTed to another.
+ * Builds a flow definition for one store from a definition read off another.
  *
- * Two kinds of id live in a definition and they need opposite treatment:
+ * The shape is the one returned by
+ * GET /api/flows/:id?additional-fields[flow]=definition. Three different kinds
+ * of id live in it and each needs different handling -- this is the whole
+ * reason this module exists:
  *
- *   - Ids of objects *inside* the flow (actions, paths, triggers) belong to the
- *     source account. They are stripped and replaced with `temporary_id`, which
- *     is how the create endpoint identifies not-yet-existing objects. The same
- *     id can be referenced from elsewhere in the definition, so one id always
- *     maps to one temporary_id.
- *   - Ids that *reference* other resources in the account -- a template id on a
- *     send-email action, a list or metric id on the trigger -- point at objects
- *     that already exist separately in the target account. Turning those into
- *     temporary_ids would be wrong; they have to be remapped to the equivalent
- *     object in the target account, or the flow will send the source store's
- *     emails from the target store.
+ *   1. Action ids (`actions[].id`, `entry_action_id`, `links.next`) identify
+ *      nodes *within* the flow. On create these become `temporary_id`, and
+ *      every reference to them has to move in step.
+ *   2. `triggers[].id` and `profile_filter` `metric_id` are *metric* ids. They
+ *      look like node ids but point at account-level objects, so they must be
+ *      swapped for the target account's equivalent metric -- never turned into
+ *      a temporary_id.
+ *   3. `data.message.template_id` points at a template, and `data.message.id`
+ *      at an existing message. The template is remapped; the message id is
+ *      dropped so the target account mints a fresh one.
+ *
+ * Getting (2) wrong yields a flow that looks right in the UI but triggers off
+ * another store's metric, so the mapping is required rather than optional.
  */
 
-/** Field names whose value points at a resource outside the flow, not at a node within it. */
-const CROSS_REFERENCE_FIELDS = new Set([
-  'template_id',
-  'list_id',
-  'metric_id',
-  'segment_id',
-  'catalog_id',
-  'tag_id',
-]);
+/** @returns the source action list re-keyed onto temporary ids, chain intact. */
+const retargetActions = (sourceActions, messageFor) => {
+  const tempIds = new Map(sourceActions.map((a, i) => [a.id, `action_${i + 1}`]));
 
-const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  let emailIndex = 0;
+  const actions = sourceActions.map((action) => {
+    const next = action.links?.next;
+    const rebuilt = {
+      temporary_id: tempIds.get(action.id),
+      type: action.type,
+      links: { next: next ? tempIds.get(next) ?? null : null },
+    };
+
+    if (action.type === 'send-email') {
+      const overrides = messageFor(emailIndex++);
+      const { id, ...message } = action.data.message; // drop the source message id
+      rebuilt.data = {
+        ...action.data,
+        message: { ...message, ...overrides },
+      };
+    } else {
+      rebuilt.data = action.data;
+    }
+    return rebuilt;
+  });
+
+  return { actions, tempIds };
+};
+
+/** Rewrites every metric_id in the profile filter to the target account's metric. */
+const retargetProfileFilter = (profileFilter, metricMap) => {
+  if (!profileFilter) return profileFilter;
+
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (node === null || typeof node !== 'object') return node;
+
+    const out = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (key === 'metric_id' && typeof value === 'string') {
+        const mapped = metricMap.get(value);
+        if (!mapped) throw new Error(`No target metric mapped for source metric ${value}`);
+        out[key] = mapped;
+        continue;
+      }
+      out[key] = walk(value);
+    }
+    return out;
+  };
+
+  return walk(profileFilter);
+};
 
 /**
- * Walks the definition, replacing every node `id` with a `temporary_id` and
- * recording the mapping so references can be rewritten in a second pass.
+ * @param source      the source store's `definition` object
+ * @param metricMap   Map of source metric id -> target metric id (trigger + any
+ *                    metric referenced by the profile filter)
+ * @param messageFor  (emailIndex) => overrides merged into that send-email's
+ *                    message: template_id, subject_line, from_email, from_label, name
  */
-const collectNodeIds = (node, mapping) => {
-  if (Array.isArray(node)) {
-    node.forEach((n) => collectNodeIds(n, mapping));
-    return;
-  }
-  if (!isPlainObject(node)) return;
+const buildDefinition = ({ source, metricMap, messageFor }) => {
+  const triggers = source.triggers.map((trigger) => {
+    if (trigger.type !== 'metric') throw new Error(`Unsupported trigger type "${trigger.type}"`);
+    const mapped = metricMap.get(trigger.id);
+    if (!mapped) throw new Error(`No target metric mapped for trigger metric ${trigger.id}`);
+    return { ...trigger, id: mapped };
+  });
 
-  if (typeof node.id === 'string' && !mapping.has(node.id)) {
-    mapping.set(node.id, `tmp_${mapping.size + 1}`);
-  }
-  for (const value of Object.values(node)) collectNodeIds(value, mapping);
-};
+  const { actions, tempIds } = retargetActions(source.actions, messageFor);
 
-const rewrite = (node, mapping, crossReferences) => {
-  if (Array.isArray(node)) return node.map((n) => rewrite(n, mapping, crossReferences));
-  if (!isPlainObject(node)) return node;
-
-  const out = {};
-  for (const [key, value] of Object.entries(node)) {
-    if (key === 'id' && typeof value === 'string' && mapping.has(value)) {
-      out.temporary_id = mapping.get(value);
-      continue;
-    }
-    if (CROSS_REFERENCE_FIELDS.has(key) && typeof value === 'string') {
-      // A cross-reference may coincide with a node id in the mapping; the
-      // field name wins, because the value points outside the flow.
-      out[key] = crossReferences.has(value) ? crossReferences.get(value) : value;
-      continue;
-    }
-    if (typeof value === 'string' && mapping.has(value)) {
-      out[key] = mapping.get(value);
-      continue;
-    }
-    out[key] = rewrite(value, mapping, crossReferences);
-  }
-  return out;
+  return {
+    triggers,
+    profile_filter: retargetProfileFilter(source.profile_filter, metricMap),
+    actions,
+    entry_action_id: tempIds.get(source.entry_action_id) ?? null,
+    reentry_criteria: source.reentry_criteria,
+  };
 };
 
 /**
- * @param definition  flow definition as returned by
- *                    GET /api/flows/:id?additional-fields[flow]=definition
- * @param crossReferences  Map of source-account resource id -> target-account id
- * @returns { definition, mapping, unresolved }  `unresolved` lists cross-reference
- *          values that had no mapping and would still point at the source account.
+ * Fails loudly if anything in the built definition still points at the source
+ * account. Cheaper than discovering it after three stores are wired up wrong.
  */
-const retargetDefinition = (definition, crossReferences = new Map()) => {
-  const mapping = new Map();
-  collectNodeIds(definition, mapping);
-
-  // A cross-referenced id must never be treated as an in-flow node id.
-  for (const sourceId of crossReferences.keys()) mapping.delete(sourceId);
-
-  const rewritten = rewrite(definition, mapping, crossReferences);
-  const unresolved = findUnresolved(definition, crossReferences);
-  return { definition: rewritten, mapping, unresolved };
-};
-
-const findUnresolved = (node, crossReferences, found = []) => {
-  if (Array.isArray(node)) {
-    node.forEach((n) => findUnresolved(n, crossReferences, found));
-    return found;
-  }
-  if (!isPlainObject(node)) return found;
-
-  for (const [key, value] of Object.entries(node)) {
-    if (CROSS_REFERENCE_FIELDS.has(key) && typeof value === 'string' && !crossReferences.has(value)) {
-      found.push({ field: key, value });
+const findSourceLeaks = (definition, sourceIds) => {
+  const leaks = [];
+  const walk = (node, path) => {
+    if (Array.isArray(node)) return node.forEach((n, i) => walk(n, `${path}[${i}]`));
+    if (node === null || typeof node !== 'object') {
+      if (typeof node === 'string' && sourceIds.has(node)) leaks.push({ path, value: node });
+      return;
     }
-    findUnresolved(value, crossReferences, found);
-  }
-  return found;
+    for (const [key, value] of Object.entries(node)) walk(value, `${path}.${key}`);
+  };
+  walk(definition, '');
+  return leaks;
 };
 
-export { retargetDefinition, CROSS_REFERENCE_FIELDS };
+export { buildDefinition, findSourceLeaks };

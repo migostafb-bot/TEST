@@ -1,24 +1,30 @@
 #!/usr/bin/env node
 /**
- * Clones the abandoned-checkout flow from a source store into other stores.
+ * Creates the abandoned-checkout flow in a store, using another store's flow
+ * as the structural source (trigger, profile filters, delays, re-entry).
  *
- * The create endpoint takes a whole flow definition, and the practical way to
- * get a valid one is to read it back off a flow that already exists. So this
- * reads the source store's flow, remaps everything that pointed at the source
- * account, and posts the result to each target.
+ * It is deliberately not a verbatim clone. The source flow's emails carry
+ * whatever templates and subject lines that store happens to use; this wires
+ * each target store to *its own* deployed templates and the subject lines the
+ * templates were built with, so the flow sends the store's real copy rather
+ * than a copy of another store's.
  *
- * Flows arrive in Draft. Nothing here sets one live.
+ * Metrics and templates are resolved by name in each account, so no ids are
+ * hardcoded here.
  *
  * Usage:
- *   node src/deploy-flow.js --from store1 --to store2,store3,store4 [--flow-id ID] [--dry-run]
+ *   node src/deploy-flow.js --from store1 --to store2,store3,store4 [--confirm]
  *
- * Without --confirm it stops after printing what it would send.
+ * Without --confirm it prints what it would send and creates nothing.
  */
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { KlaviyoClient } from './klaviyo.js';
-import { retargetDefinition } from './flow-definition.js';
+import { buildDefinition, findSourceLeaks } from './flow-definition.js';
+import { buildTemplates } from './templates.js';
 
 const SNAPSHOT_DIR = new URL('../snapshots/', import.meta.url);
+
+const TRIGGER_METRIC = 'Checkout Started';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -32,44 +38,27 @@ const keyFor = (store) => {
   return apiKey;
 };
 
+const indexByName = (payload, pick = (x) => x.attributes.name) =>
+  new Map((payload?.data || []).map((x) => [pick(x), x.id]));
+
 /**
- * Templates are per-account and named after the store, so a source template
- * called "Store One Abandoned Checkout 2" matches "Store Two Abandoned
- * Checkout 2" in the target. Matching on the trailing part keeps that stable
- * even if the store names change.
+ * Templates are named "[Store Name] Abandoned Checkout N - ...", so the part
+ * after the store prefix is what matches across accounts.
  */
-const templateSuffix = (name, storeName) =>
-  name.startsWith(storeName) ? name.slice(storeName.length).trim() : name;
+const suffixOf = (name) => name.replace(/^\[[^\]]*\]\s*/, '');
 
-const buildTemplateMap = async (sourceClient, targetClient, sourceStore, targetStore) => {
-  const [sourceTemplates, targetTemplates] = await Promise.all([
-    sourceClient.listTemplates(),
-    targetClient.listTemplates(),
-  ]);
-
-  const targetBySuffix = new Map(
-    (targetTemplates?.data || []).map((t) => [
-      templateSuffix(t.attributes.name, targetStore.name),
-      t.id,
-    ]),
-  );
-
-  const map = new Map();
-  const missing = [];
-  for (const t of sourceTemplates?.data || []) {
-    const suffix = templateSuffix(t.attributes.name, sourceStore.name);
-    const targetId = targetBySuffix.get(suffix);
-    if (targetId) map.set(t.id, targetId);
-    else missing.push(t.attributes.name);
-  }
-  return { map, missing };
+const resolveStore = async (client, store) => {
+  const [templates, metrics] = await Promise.all([client.listTemplates(), client.listMetrics()]);
+  return {
+    templatesBySuffix: indexByName(templates, (t) => suffixOf(t.attributes.name)),
+    metricsByName: indexByName(metrics),
+  };
 };
 
 const main = async () => {
   const from = arg('from', 'store1');
   const to = (arg('to', '') || '').split(',').filter(Boolean);
   const confirm = flag('confirm');
-  const dryRun = flag('dry-run') || !confirm;
 
   if (!to.length) throw new Error('Pass --to store2,store3,store4');
 
@@ -78,9 +67,8 @@ const main = async () => {
   if (!sourceStore) throw new Error(`Unknown source store "${from}"`);
 
   const sourceClient = new KlaviyoClient(keyFor(sourceStore));
+  const sourceResolved = await resolveStore(sourceClient, sourceStore);
 
-  // Find the flow to clone: an explicit id, or the one abandoned-checkout flow
-  // in the source account.
   let flowId = arg('flow-id');
   if (!flowId) {
     const flows = await sourceClient.listFlows();
@@ -97,66 +85,138 @@ const main = async () => {
     flowId = candidates[0].id;
   }
 
-  const source = await sourceClient.getFlowDefinition(flowId);
-  const definition = source?.data?.attributes?.definition;
-  if (!definition) throw new Error(`Flow ${flowId} returned no definition`);
+  const sourceFlow = await sourceClient.getFlowDefinition(flowId);
+  const source = sourceFlow?.data?.attributes?.definition;
+  if (!source) throw new Error(`Flow ${flowId} returned no definition`);
 
-  // Keep the source definition on disk: it is the only reference for what a
-  // valid payload looks like, and re-fetching needs the source key again.
   await mkdir(SNAPSHOT_DIR, { recursive: true });
   await writeFile(
     new URL(`flow-${from}-${flowId}.json`, SNAPSHOT_DIR),
-    JSON.stringify(source.data, null, 2),
+    JSON.stringify(sourceFlow.data, null, 2),
   );
-  console.log(`source: ${sourceStore.name} flow ${flowId} "${source.data.attributes?.name}"`);
-  console.log(`        snapshot written to snapshots/flow-${from}-${flowId}.json`);
+
+  const emailActions = source.actions.filter((a) => a.type === 'send-email');
+  console.log(
+    `source: ${sourceStore.name} flow ${flowId} "${sourceFlow.data.attributes?.name}" ` +
+      `(${source.actions.length} actions, ${emailActions.length} emails)`,
+  );
+
+  // Every id that belongs to the source account, for the leak check.
+  const sourceIds = new Set([
+    ...source.triggers.map((t) => t.id),
+    ...source.actions.map((a) => a.id),
+    ...emailActions.flatMap((a) => [a.data.message.template_id, a.data.message.id]),
+  ]);
+
+  const sourceTriggerMetric = source.triggers[0]?.id;
 
   for (const targetKey of to) {
     const targetStore = stores[targetKey];
     if (!targetStore) throw new Error(`Unknown target store "${targetKey}"`);
 
+    const sending = targetStore.sending || {};
+    if (!sending.fromEmail || !sending.fromLabel) {
+      console.error(
+        `\n${targetStore.name}: SKIPPED -- config/stores.json has no sending.fromEmail / ` +
+          `sending.fromLabel. Sending from another store's domain would be wrong, so ` +
+          `this is not guessed.`,
+      );
+      continue;
+    }
+
     const targetClient = new KlaviyoClient(keyFor(targetStore));
-    const { map, missing } = await buildTemplateMap(
-      sourceClient,
-      targetClient,
-      sourceStore,
-      targetStore,
+    const target = await resolveStore(targetClient, targetStore);
+
+    // Map every metric the source definition mentions, by name.
+    const metricMap = new Map();
+    const sourceMetricNames = new Map(
+      [...sourceResolved.metricsByName].map(([name, id]) => [id, name]),
     );
-    if (missing.length) {
-      console.warn(
-        `\n${targetStore.name}: no matching template for ${missing.join(', ')} ` +
-          `-- run \`npm run deploy ${targetKey}\` first`,
+    const mapMetric = (sourceId) => {
+      const name = sourceMetricNames.get(sourceId);
+      if (!name) throw new Error(`Source metric ${sourceId} not found in ${sourceStore.name}`);
+      const targetId = target.metricsByName.get(name);
+      if (!targetId) throw new Error(`${targetStore.name} has no metric named "${name}"`);
+      metricMap.set(sourceId, targetId);
+      return targetId;
+    };
+
+    mapMetric(sourceTriggerMetric);
+    JSON.stringify(source.profile_filter, (key, value) => {
+      if (key === 'metric_id' && typeof value === 'string') mapMetric(value);
+      return value;
+    });
+
+    // The subject line each template was authored with lives alongside the
+    // template in templates.js -- use that rather than the source flow's.
+    const built = buildTemplates(targetStore);
+    const messages = built.map((t) => {
+      const templateId = target.templatesBySuffix.get(suffixOf(t.name));
+      if (!templateId) {
+        throw new Error(
+          `${targetStore.name} has no template "${t.name}" -- run \`npm run deploy ${targetKey}\` first`,
+        );
+      }
+      return {
+        template_id: templateId,
+        subject_line: t.subject,
+        from_email: sending.fromEmail,
+        from_label: sending.fromLabel,
+        name: t.name,
+      };
+    });
+
+    if (messages.length !== emailActions.length) {
+      throw new Error(
+        `Source flow has ${emailActions.length} emails but ${messages.length} templates are built ` +
+          `for ${targetStore.name}`,
       );
     }
 
-    const { definition: retargeted, unresolved } = retargetDefinition(definition, map);
+    const definition = buildDefinition({
+      source,
+      metricMap,
+      messageFor: (i) => messages[i],
+    });
 
-    const name = (source.data.attributes?.name || 'Abandoned Checkout').replace(
-      sourceStore.name,
-      targetStore.name,
+    // An id that is a legitimate mapping *target* is not a leak -- when source
+    // and target are the same account, a metric correctly maps to itself.
+    const allowedTargets = new Set([...metricMap.values(), ...messages.map((m) => m.template_id)]);
+    const leaks = findSourceLeaks(definition, sourceIds).filter(
+      (l) => !allowedTargets.has(l.value),
     );
-
-    if (unresolved.length) {
-      // Posting these would wire the target store's flow to the source
-      // store's resources, so stop rather than create a flow that looks fine
-      // in the UI and sends the wrong emails.
-      console.error(`\n${targetStore.name}: ABORT -- unmapped references:`);
-      unresolved.forEach((u) => console.error(`  ${u.field} = ${u.value}`));
+    if (leaks.length) {
+      console.error(`\n${targetStore.name}: ABORT -- source ids still present:`);
+      leaks.forEach((l) => console.error(`  ${l.path} = ${l.value}`));
       continue;
     }
 
-    if (dryRun) {
-      console.log(`\n[dry-run] ${targetStore.name}: would create flow "${name}"`);
-      console.log(`          ${map.size} template references remapped`);
-      console.log(JSON.stringify({ name, definition: retargeted }, null, 2).slice(0, 2000));
+    const name = `Abandoned Checkout - ${targetStore.name}`;
+
+    if (!confirm) {
+      console.log(`\n[dry-run] ${targetStore.name}: would create "${name}"`);
+      console.log(`  trigger metric  ${sourceTriggerMetric} -> ${metricMap.get(sourceTriggerMetric)} (${TRIGGER_METRIC})`);
+      console.log(`  from            ${sending.fromLabel} <${sending.fromEmail}>`);
+      definition.actions.forEach((a) => {
+        if (a.type === 'send-email') {
+          console.log(
+            `  email           ${a.data.message.template_id}  "${a.data.message.subject_line}"`,
+          );
+        } else {
+          console.log(`  delay           ${a.data.value} ${a.data.unit}`);
+        }
+      });
       continue;
     }
 
-    const created = await targetClient.createFlow({ name, definition: retargeted });
-    console.log(`\n${targetStore.name}: created flow ${created?.data?.id} "${name}" (Draft)`);
+    const created = await targetClient.createFlow({ name, definition });
+    console.log(
+      `\n${targetStore.name}: created flow ${created?.data?.id} "${name}" ` +
+        `status=${created?.data?.attributes?.status}`,
+    );
   }
 
-  if (dryRun) console.log('\nNothing was created. Re-run with --confirm to create the flows.');
+  if (!confirm) console.log('\nNothing created. Re-run with --confirm.');
 };
 
 main().catch((err) => {

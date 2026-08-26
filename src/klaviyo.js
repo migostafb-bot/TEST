@@ -11,11 +11,12 @@ const BASE_URL = 'https://a.klaviyo.com/api';
 const API_REVISION = '2024-10-15';
 
 /**
- * Flow creation shipped as a beta endpoint and is gated behind the `.pre`
- * revision, so it cannot ride on API_REVISION. Only the flow calls send this;
- * template deploys stay on the stable revision.
+ * The flow `definition` field does not exist on API_REVISION -- asking for it
+ * there is a 400. It needs a revision at or after 2025-10-15, where it is
+ * stable (it first shipped behind a `.pre` beta revision). Only the flow calls
+ * send this; template deploys stay on the pinned revision.
  */
-const FLOWS_API_REVISION = '2024-10-15.pre';
+const FLOWS_API_REVISION = '2025-10-15';
 
 class KlaviyoError extends Error {
   constructor(status, body) {
@@ -69,6 +70,10 @@ class KlaviyoClient {
     });
   }
 
+  listMetrics() {
+    return this.request('GET', '/metrics/');
+  }
+
   listFlows() {
     return this.request('GET', '/flows/', null, { revision: FLOWS_API_REVISION });
   }
@@ -89,6 +94,19 @@ class KlaviyoClient {
       'POST',
       '/flows/',
       { data: { type: 'flow', attributes: { name, definition } } },
+      { revision: FLOWS_API_REVISION },
+    );
+  }
+
+  /**
+   * The message definition is replaced wholesale, not merged -- send back every
+   * field that should survive the update, not just the ones being changed.
+   */
+  updateFlowMessage(id, definition) {
+    return this.request(
+      'PATCH',
+      `/flow-messages/${id}/`,
+      { data: { type: 'flow-message', id, attributes: { definition } } },
       { revision: FLOWS_API_REVISION },
     );
   }

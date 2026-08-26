@@ -12,6 +12,27 @@
       "muted": "#6b7280"
     },
     "supportEmail": "support@example.com",
-    "incentive": { "type": "free_shipping", "code": "COMEBACK" }
+    "incentive": {
+      "type": "free_shipping",
+      "code": "COMEBACK"
+    }
+  },
+  "store2": {
+    "name": "Store Two",
+    "domain": "store-two.myshopify.com",
+    "apiKeyEnv": "KLAVIYO_STORE2_KEY",
+    "brand": {
+      "logoUrl": "",
+      "primary": "#1a1a1a",
+      "accent": "#2f6fed",
+      "background": "#f4f4f5",
+      "text": "#1a1a1a",
+      "muted": "#6b7280"
+    },
+    "supportEmail": "support@example.com",
+    "incentive": {
+      "type": "free_shipping",
+      "code": "COMEBACK"
+    }
   }
 }

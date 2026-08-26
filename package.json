@@ -1,0 +1,12 @@
+{
+  "name": "klaviyo-checkout-recovery",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "preview": "node src/preview.js",
+    "deploy": "node src/deploy.js",
+    "deploy:dry": "node src/deploy.js --dry-run"
+  },
+  "engines": { "node": ">=18" }
+}

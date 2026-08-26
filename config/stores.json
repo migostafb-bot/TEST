@@ -1,0 +1,17 @@
+{
+  "store1": {
+    "name": "Store One",
+    "domain": "store-one.myshopify.com",
+    "apiKeyEnv": "KLAVIYO_STORE1_KEY",
+    "brand": {
+      "logoUrl": "",
+      "primary": "#1a1a1a",
+      "accent": "#2f6fed",
+      "background": "#f4f4f5",
+      "text": "#1a1a1a",
+      "muted": "#6b7280"
+    },
+    "supportEmail": "support@example.com",
+    "incentive": { "type": "free_shipping", "code": "COMEBACK" }
+  }
+}

@@ -22,10 +22,11 @@ four Shopify stores from one codebase.
 2. Fill in the store's branding in `config/stores.json` -- logo URL, colors,
    incentive code.
 
-3. Preview locally, then deploy:
+3. Preview locally, verify against the account, then deploy:
 
    ```
    npm run preview        # writes preview/*.html, open in a browser
+   npm run verify store1  # checks the key and the live event payload
    npm run deploy:dry     # lists what would change
    npm run deploy store1  # creates or updates templates in Klaviyo
    ```
@@ -52,6 +53,11 @@ The API does not cover these:
 
 Templates use Klaviyo's Shopify `Started Checkout` event:
 `event.extra.checkout_url`, `event.extra.line_items` (`title`, `line_price`,
-`image_url`). Confirm these against a real event payload in your account before
-going live -- the Shopify payload shape varies by integration version, and a
-wrong variable renders as an empty block rather than an error.
+`image_url`). The Shopify payload shape varies by integration version, and a
+wrong variable renders as an empty block rather than an error -- so
+`npm run verify <store>` reads the most recent real event in the account and
+checks each of those names against it.
+
+It also confirms the API key works and can reach Templates. If a name has
+moved, verify prints the keys actually available under `event.extra`, so
+`src/templates.js` can be corrected before anything is deployed.

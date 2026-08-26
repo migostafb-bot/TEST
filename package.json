@@ -7,6 +7,7 @@
     "preview": "node src/preview.js",
     "deploy": "node src/deploy.js",
     "deploy:dry": "node src/deploy.js --dry-run",
+    "verify": "node src/verify.js",
     "bundle": "node src/bundle.js"
   },
   "engines": { "node": ">=18" }

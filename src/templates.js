@@ -18,7 +18,7 @@
 const COPY = {
   en: {
     lang: 'en',
-    footerHelp: '${t.footerHelp}',
+    footerHelp: 'Questions? Just reply to this email.',
     unsubscribe: 'Unsubscribe',
     reminder: {
       subject: 'You left something behind',

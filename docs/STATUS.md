@@ -21,6 +21,9 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   | store3 | PELVIOR™       | `TkHBqD` | `X2dDNn` | `lasantefr.shop` |
   | store4 | City Pharma FR | `THQSZ6` | `Xy2rYJ` | `citypharmafr.shop` |
 
+  Brands for stores 1-3 are the product `vendor` on real checkout events;
+  store 4 has no events yet and its name was confirmed by the user directly.
+
   `config/stores.json` keeps two names per store on purpose: `displayName` is
   the customer-facing brand (email header, From name), while `name` keys the
   template naming scheme (`[Store One] ...`). Renaming `name` would orphan the
@@ -83,10 +86,6 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   Unverified until a key is available: whether the endpoint has since gone GA
   on a stable revision, and the exact definition shape (the retargeting logic
   is tested against a synthetic definition only).
-- **Store 4's brand name is an assumption.** `City Pharma FR`, derived from
-  `citypharmafr.shop`. The other three come from the product `vendor` on real
-  checkout events; store 4 has no events yet. One line in `config/stores.json`
-  to correct, then rebuild that flow.
 - **Logo images are unverified.** The four logo URLs are on the storefronts,
   which this environment cannot reach (403 at the egress proxy), so it was not
   possible to confirm they load or what they look like. Recipients' email

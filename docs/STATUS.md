@@ -63,20 +63,29 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
 
 ## Test flow (temporary -- delete after testing)
 
-`T7TQrc` "TEST 5min - City Pharma FR" is **live** in store 4, identical to the
-real flow except the first wait is 5 minutes instead of an hour, so a real
-abandoned checkout can be verified in one sitting. Store 4 was chosen because
-it has no checkout events, so a live flow there is unlikely to reach a real
-customer.
+One per store, identical to the real flow except the first wait is 2 minutes
+instead of an hour, so a real abandoned checkout can be verified in one
+sitting.
 
-**Delete `T7TQrc` once the test passes.** Leaving it live means store 4 sends
-both it and `THQSZ6` on the same trigger once the real flow goes live.
+| Store | Test flow | Production flow |
+|-------|-----------|-----------------|
+| store1 | `Xim9U7` TEST 2min - PHARMA FR      | `WrMQmf` |
+| store2 | `UTvtPm` TEST 2min - VIGILIA       | `UL2dkF` |
+| store3 | `UPttwj` TEST 2min - PELVIOR       | `TkHBqD` |
+| store4 | `QVSreR` TEST 2min - CITY PHARMA FR | `THQSZ6` |
+
+All eight are currently **draft**. A flow sends nothing until it is set live,
+and setting a test flow live means every customer who abandons a cart on that
+store receives it -- not just whoever is testing.
+
+**Delete the four test flows once the test passes.** Leaving one live means
+that store sends both it and its production flow on the same trigger.
 
 Recreate with:
 
 ```
-node src/deploy-flow.js --from store1 --flow-id <live-flow> --to store4 \
-  --first-delay 5 --name "TEST 5min - City Pharma FR" --confirm
+node src/deploy-flow.js --from store1 --flow-id <source-flow> --to <store> \
+  --first-delay 2 --name "TEST 2min - <brand>" --confirm
 ```
 
 ## Next

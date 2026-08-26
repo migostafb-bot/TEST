@@ -83,10 +83,87 @@ class KlaviyoClient {
  * see `npm run verify`.
  */
 
+
+/**
+ * All user-facing wording, keyed by locale. Adding a language means adding a
+ * block here -- the layout and Liquid stay shared.
+ */
+const COPY = {
+  en: {
+    lang: 'en',
+    footerHelp: '${t.footerHelp}',
+    unsubscribe: 'Unsubscribe',
+    reminder: {
+      subject: 'You left something behind',
+      preheader: 'Your cart is still saved - pick up where you left off.',
+      heading: 'Still thinking it over?',
+      body: 'We saved your cart, so you can finish whenever you are ready.',
+      cta: 'Return to checkout',
+    },
+    objections: {
+      subject: 'Still available - and here is our promise',
+      preheader: 'Free returns, secure checkout, real people on support.',
+      heading: 'Your cart is still waiting',
+      intro: 'If something gave you pause, here is what you should know:',
+      points: [
+        ['Easy returns', 'send it back if it is not right'],
+        ['Secure checkout', 'your payment details stay encrypted'],
+        ['Real support', 'reply to this email and a person answers'],
+      ],
+      cta: 'Complete my order',
+    },
+    incentive: {
+      subjectShipping: 'Free shipping on your cart',
+      subjectDiscount: 'A little something off your cart',
+      preheader: (code) => `Use code ${code} before your cart expires.`,
+      headingShipping: 'Here is free shipping',
+      headingDiscount: 'Here is a discount',
+      body: (code) => `Use code <strong>${code}</strong> at checkout. We are holding your cart a little longer.`,
+      cta: 'Claim my offer',
+    },
+  },
+
+  fr: {
+    lang: 'fr',
+    footerHelp: 'Une question ? Répondez simplement à cet e-mail.',
+    unsubscribe: 'Se désabonner',
+    reminder: {
+      subject: 'Vous avez oublié quelque chose',
+      preheader: 'Votre panier est toujours enregistré - reprenez où vous vous étiez arrêté.',
+      heading: 'Vous hésitez encore ?',
+      body: 'Nous avons gardé votre panier. Vous pouvez finaliser votre commande quand vous le souhaitez.',
+      cta: 'Retourner au paiement',
+    },
+    objections: {
+      subject: 'Toujours disponible - et voici notre engagement',
+      preheader: 'Retours faciles, paiement sécurisé, un vrai service client.',
+      heading: 'Votre panier vous attend toujours',
+      intro: 'Si quelque chose vous a fait hésiter, voici ce qu\'il faut savoir :',
+      points: [
+        ['Retours faciles', 'renvoyez votre commande si elle ne vous convient pas'],
+        ['Paiement sécurisé', 'vos données bancaires restent chiffrées'],
+        ['Un vrai service client', 'répondez à cet e-mail, une personne vous répond'],
+      ],
+      cta: 'Finaliser ma commande',
+    },
+    incentive: {
+      subjectShipping: 'La livraison est offerte sur votre panier',
+      subjectDiscount: 'Une petite remise sur votre panier',
+      preheader: (code) => `Utilisez le code ${code} avant l'expiration de votre panier.`,
+      headingShipping: 'La livraison est offerte',
+      headingDiscount: 'Voici votre remise',
+      body: (code) => `Utilisez le code <strong>${code}</strong> lors du paiement. Nous gardons votre panier encore un peu.`,
+      cta: 'Profiter de l\'offre',
+    },
+  },
+};
+
+const copyFor = (store) => COPY[store.locale] || COPY.en;
+
 const CHECKOUT_URL = '{{ event.extra.checkout_url|default:organization.url }}';
 
-const layout = (brand, { preheader, body }) => `<!doctype html>
-<html lang="en">
+const layout = (brand, { preheader, body, t }) => `<!doctype html>
+<html lang="${t.lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -107,11 +184,11 @@ ${brand.logoUrl
 ${body}
 <tr><td style="padding:24px 32px 32px;border-top:1px solid #e5e7eb;">
 <p style="margin:0 0 8px;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${brand.muted};">
-Questions? Just reply to this email.
+${t.footerHelp}
 </p>
 <p style="margin:0;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${brand.muted};">
 {{ organization.name }} &middot; {{ organization.full_address }}<br>
-<a href="{% unsubscribe %}" style="color:${brand.muted};">Unsubscribe</a>
+<a href="{% unsubscribe %}" style="color:${brand.muted};">${t.unsubscribe}</a>
 </p>
 </td></tr>
 </table>
@@ -159,56 +236,61 @@ const cta = (brand, label) => `
 <tr><td style="padding:0 32px 8px;">${button(brand, label)}</td></tr>`;
 
 /* --- Email 1: +1h. No discount -- it protects margin and still converts best. --- */
-const reminder = (store) => ({
-  name: `[${store.name}] Abandoned Checkout 1 - Reminder`,
-  subject: 'You left something behind',
-  html: layout(store.brand, {
-    preheader: 'Your cart is still saved - pick up where you left off.',
-    body:
-      heading(store.brand, 'Still thinking it over?') +
-      paragraph(store.brand, 'We saved your cart, so you can finish whenever you are ready.') +
-      cart(store.brand) +
-      cta(store.brand, 'Return to checkout'),
-  }),
-});
+const reminder = (store) => {
+  const t = copyFor(store);
+  return {
+    name: `[${store.name}] Abandoned Checkout 1 - Reminder`,
+    subject: t.reminder.subject,
+    html: layout(store.brand, {
+      t,
+      preheader: t.reminder.preheader,
+      body:
+        heading(store.brand, t.reminder.heading) +
+        paragraph(store.brand, t.reminder.body) +
+        cart(store.brand) +
+        cta(store.brand, t.reminder.cta),
+    }),
+  };
+};
 
 /* --- Email 2: +24h. Handles the trust objection, not the price objection. --- */
-const objections = (store) => ({
-  name: `[${store.name}] Abandoned Checkout 2 - Why shop with us`,
-  subject: 'Still available - and here is our promise',
-  html: layout(store.brand, {
-    preheader: 'Free returns, secure checkout, real people on support.',
-    body:
-      heading(store.brand, 'Your cart is still waiting') +
-      paragraph(store.brand, 'If something gave you pause, here is what you should know:') +
-      paragraph(
-        store.brand,
-        '<strong>Easy returns</strong> &middot; send it back if it is not right<br>' +
-        '<strong>Secure checkout</strong> &middot; your payment details stay encrypted<br>' +
-        '<strong>Real support</strong> &middot; reply to this email and a person answers'
-      ) +
-      cart(store.brand) +
-      cta(store.brand, 'Complete my order'),
-  }),
-});
+const objections = (store) => {
+  const t = copyFor(store);
+  const points = t.objections.points
+    .map(([label, detail]) => `<strong>${label}</strong> &middot; ${detail}`)
+    .join('<br>');
+  return {
+    name: `[${store.name}] Abandoned Checkout 2 - Why shop with us`,
+    subject: t.objections.subject,
+    html: layout(store.brand, {
+      t,
+      preheader: t.objections.preheader,
+      body:
+        heading(store.brand, t.objections.heading) +
+        paragraph(store.brand, t.objections.intro) +
+        paragraph(store.brand, points) +
+        cart(store.brand) +
+        cta(store.brand, t.objections.cta),
+    }),
+  };
+};
 
 /* --- Email 3: +72h. Incentive last, so we never discount a sale we'd have won. --- */
 const incentive = (store) => {
+  const t = copyFor(store);
   const isShipping = store.incentive.type === 'free_shipping';
-  const offer = isShipping ? 'free shipping' : 'a discount';
+  const { code } = store.incentive;
   return {
     name: `[${store.name}] Abandoned Checkout 3 - Incentive`,
-    subject: isShipping ? 'Free shipping on your cart' : 'A little something off your cart',
+    subject: isShipping ? t.incentive.subjectShipping : t.incentive.subjectDiscount,
     html: layout(store.brand, {
-      preheader: `Use code ${store.incentive.code} before your cart expires.`,
+      t,
+      preheader: t.incentive.preheader(code),
       body:
-        heading(store.brand, `Here is ${offer}`) +
-        paragraph(
-          store.brand,
-          `Use code <strong>${store.incentive.code}</strong> at checkout. We are holding your cart a little longer.`
-        ) +
+        heading(store.brand, isShipping ? t.incentive.headingShipping : t.incentive.headingDiscount) +
+        paragraph(store.brand, t.incentive.body(code)) +
         cart(store.brand) +
-        cta(store.brand, 'Claim my offer'),
+        cta(store.brand, t.incentive.cta),
     }),
   };
 };
@@ -217,14 +299,15 @@ const buildTemplates = (store) => [reminder(store), objections(store), incentive
 
 
 /* --- standalone entry point --- */
-const [apiKey, storeName = 'My Store'] = process.argv.slice(2);
+const [apiKey, storeName = 'My Store', locale = 'fr'] = process.argv.slice(2);
 if (!apiKey || !apiKey.startsWith('pk_')) {
-  console.error('Usage: node deploy-klaviyo.mjs <private-api-key> "<Store Name>"');
+  console.error('Usage: node deploy-klaviyo.mjs <private-api-key> "<Store Name>" [fr|en]');
   process.exit(1);
 }
 
 const store = {
   name: storeName,
+  locale,
   brand: { logoUrl: '', primary: '#1a1a1a', accent: '#2f6fed', background: '#f4f4f5', text: '#1a1a1a', muted: '#6b7280' },
   incentive: { type: 'free_shipping', code: 'COMEBACK' },
 };

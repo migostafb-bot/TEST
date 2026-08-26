@@ -16,14 +16,15 @@ const read = async (f) => strip(await readFile(new URL(f, import.meta.url), 'utf
 
 const runner = `
 /* --- standalone entry point --- */
-const [apiKey, storeName = 'My Store'] = process.argv.slice(2);
+const [apiKey, storeName = 'My Store', locale = 'fr'] = process.argv.slice(2);
 if (!apiKey || !apiKey.startsWith('pk_')) {
-  console.error('Usage: node deploy-klaviyo.mjs <private-api-key> "<Store Name>"');
+  console.error('Usage: node deploy-klaviyo.mjs <private-api-key> "<Store Name>" [fr|en]');
   process.exit(1);
 }
 
 const store = {
   name: storeName,
+  locale,
   brand: { logoUrl: '', primary: '#1a1a1a', accent: '#2f6fed', background: '#f4f4f5', text: '#1a1a1a', muted: '#6b7280' },
   incentive: { type: 'free_shipping', code: 'COMEBACK' },
 };

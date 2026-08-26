@@ -14,8 +14,9 @@
     "supportEmail": "support@example.com",
     "incentive": {
       "type": "free_shipping",
-      "code": "COMEBACK"
-    }
+      "code": "RETOUR"
+    },
+    "locale": "fr"
   },
   "store2": {
     "name": "Store Two",
@@ -32,8 +33,9 @@
     "supportEmail": "support@example.com",
     "incentive": {
       "type": "free_shipping",
-      "code": "COMEBACK"
-    }
+      "code": "RETOUR"
+    },
+    "locale": "fr"
   },
   "store3": {
     "name": "Store Three",
@@ -50,8 +52,9 @@
     "supportEmail": "support@example.com",
     "incentive": {
       "type": "free_shipping",
-      "code": "COMEBACK"
-    }
+      "code": "RETOUR"
+    },
+    "locale": "fr"
   },
   "store4": {
     "name": "Store Four",
@@ -68,7 +71,8 @@
     "supportEmail": "support@example.com",
     "incentive": {
       "type": "free_shipping",
-      "code": "COMEBACK"
-    }
+      "code": "RETOUR"
+    },
+    "locale": "fr"
   }
 }

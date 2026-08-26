@@ -16,6 +16,12 @@
  *   node src/deploy-flow.js --from store1 --to store2,store3,store4 [--confirm]
  *
  * Without --confirm it prints what it would send and creates nothing.
+ *
+ * --first-delay <minutes>  overrides the wait before email 1. Meant for
+ *   testing: 5 minutes instead of an hour makes a real abandoned checkout
+ *   testable in one sitting. Use --name to keep such a flow clearly separate
+ *   from the production one.
+ * --name <text>  overrides the created flow's name.
  */
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { KlaviyoClient } from './klaviyo.js';
@@ -179,6 +185,17 @@ const main = async () => {
       messageFor: (i) => messages[i],
     });
 
+    const firstDelay = arg('first-delay');
+    if (firstDelay) {
+      const minutes = Number(firstDelay);
+      if (!Number.isFinite(minutes) || minutes <= 0) {
+        throw new Error(`--first-delay must be a positive number of minutes, got "${firstDelay}"`);
+      }
+      const delay = definition.actions.find((a) => a.type === 'time-delay');
+      if (!delay) throw new Error('Source flow has no time-delay to override');
+      delay.data = { ...delay.data, unit: 'minutes', value: minutes, secondary_value: 0 };
+    }
+
     // An id that is a legitimate mapping *target* is not a leak -- when source
     // and target are the same account, a metric correctly maps to itself.
     const allowedTargets = new Set([...metricMap.values(), ...messages.map((m) => m.template_id)]);
@@ -191,12 +208,13 @@ const main = async () => {
       continue;
     }
 
-    const name = `Abandoned Checkout - ${targetStore.name}`;
+    const name = arg('name') || `Abandoned Checkout - ${targetStore.name}`;
 
     if (!confirm) {
       console.log(`\n[dry-run] ${targetStore.name}: would create "${name}"`);
       console.log(`  trigger metric  ${sourceTriggerMetric} -> ${metricMap.get(sourceTriggerMetric)} (${TRIGGER_METRIC})`);
       console.log(`  from            ${sending.fromLabel} <${sending.fromEmail}>`);
+      if (arg('first-delay')) console.log(`  first delay     OVERRIDDEN to ${arg('first-delay')} minutes`);
       definition.actions.forEach((a) => {
         if (a.type === 'send-email') {
           console.log(

@@ -61,6 +61,24 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   `dropalizak2@gmail.com`. It was `live` in that state at the start of the
   session. **Archive or delete `XVDXis`** so it cannot run alongside `Wh7PQn`.
 
+## Test flow (temporary -- delete after testing)
+
+`T7TQrc` "TEST 5min - City Pharma FR" is **live** in store 4, identical to the
+real flow except the first wait is 5 minutes instead of an hour, so a real
+abandoned checkout can be verified in one sitting. Store 4 was chosen because
+it has no checkout events, so a live flow there is unlikely to reach a real
+customer.
+
+**Delete `T7TQrc` once the test passes.** Leaving it live means store 4 sends
+both it and `THQSZ6` on the same trigger once the real flow goes live.
+
+Recreate with:
+
+```
+node src/deploy-flow.js --from store1 --flow-id <live-flow> --to store4 \
+  --first-delay 5 --name "TEST 5min - City Pharma FR" --confirm
+```
+
 ## Next
 
 1. **Archive the old Store 1 flow `XVDXis`** -- see above. Two abandoned-checkout

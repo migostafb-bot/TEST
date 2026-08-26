@@ -34,5 +34,41 @@
       "type": "free_shipping",
       "code": "COMEBACK"
     }
+  },
+  "store3": {
+    "name": "Store Three",
+    "domain": "store-three.myshopify.com",
+    "apiKeyEnv": "KLAVIYO_STORE3_KEY",
+    "brand": {
+      "logoUrl": "",
+      "primary": "#1a1a1a",
+      "accent": "#2f6fed",
+      "background": "#f4f4f5",
+      "text": "#1a1a1a",
+      "muted": "#6b7280"
+    },
+    "supportEmail": "support@example.com",
+    "incentive": {
+      "type": "free_shipping",
+      "code": "COMEBACK"
+    }
+  },
+  "store4": {
+    "name": "Store Four",
+    "domain": "store-four.myshopify.com",
+    "apiKeyEnv": "KLAVIYO_STORE4_KEY",
+    "brand": {
+      "logoUrl": "",
+      "primary": "#1a1a1a",
+      "accent": "#2f6fed",
+      "background": "#f4f4f5",
+      "text": "#1a1a1a",
+      "muted": "#6b7280"
+    },
+    "supportEmail": "support@example.com",
+    "incentive": {
+      "type": "free_shipping",
+      "code": "COMEBACK"
+    }
   }
 }

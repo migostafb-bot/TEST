@@ -48,9 +48,13 @@ class KlaviyoClient {
     return this.request('GET', '/templates/');
   }
 
+  /**
+   * Create requires editor_type; update rejects it as an unknown field. The
+   * asymmetry is in the API, not a mistake here -- keep the two payloads apart.
+   */
   createTemplate({ name, html, text }) {
     return this.request('POST', '/templates/', {
-      data: { type: 'template', attributes: { name, html, text } },
+      data: { type: 'template', attributes: { name, editor_type: 'CODE', html, text } },
     });
   }
 

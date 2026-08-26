@@ -1,0 +1,3 @@
+# Flow snapshots are pulled from live accounts and can carry account-specific
+# ids; keep them local.
+*.json

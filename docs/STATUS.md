@@ -61,27 +61,32 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   `dropalizak2@gmail.com`. It was `live` in that state at the start of the
   session. **Archive or delete `XVDXis`** so it cannot run alongside `Wh7PQn`.
 
-## Flows (LIVE)
+## Flows -- ALL DEACTIVATED (2026-08-27)
 
-All four are **live** and sending, verified end to end on 2026-08-27.
+Deactivated at the user's request; they are moving to Shopify's built-in
+abandoned-checkout emails instead. Set to **draft**, not deleted, so the work
+survives if Klaviyo is revisited.
 
-| Store | Flow | Sends from | Shown as |
-|-------|------|------------|----------|
-| store1 | `Sj7giC` | `mail@pharmafr.shop` | PHARMA FR ™ |
-| store2 | `VciJmz` | `mail@sourcevie.shop` | VIGILIA |
-| store3 | `Y5wcqw` | `mail@lasantefr.shop` | PELVIOR™ |
-| store4 | `XmRTsv` | `mail@citypharmafr.shop` | City Pharma FR |
+| Store | Flow | Status |
+|-------|------|--------|
+| store1 PHARMA FR ™    | `WpCgUy` | draft |
+| store2 VIGILIA        | `WemLdL` | draft |
+| store3 PELVIOR™       | `UJrTWk` | draft |
+| store3 (instant test) | `YvRrJg` | draft -- delete if Klaviyo is resumed |
+| store4 City Pharma FR | `Tew3EU` | draft |
 
-Trigger `Checkout Started`, delays 1h / 23h / 2d (1h, 24h, 72h cumulative),
-three French emails each, all three message actions live.
+Nothing sends from any of the four accounts. To resume: `PATCH /api/flows/:id`
+with `status: live` (delete `YvRrJg` first, or store3 double-sends).
 
-Each account has its **own** verified sending domain (`send.<store domain>`),
-confirmed by Klaviyo support for store4. The sender address must sit on it or
-DMARC alignment fails.
+**They were working when switched off.** Verified end to end on store 3:
+a real checkout triggered the flow and the email was delivered, with the
+correct navy header, logo, French copy, € prices and product images. Stores
+1-3 also delivered to real customers earlier the same day.
 
-The temporary no-delay test flows have been deleted. They sent to ~16 real
-customers *immediately* on abandonment rather than after an hour, which is why
-they were stopped as soon as sending resumed.
+The one caveat was timing, not delivery: after Klaviyo's incident, sends ran
+~5 minutes late regardless of the configured delay -- a no-delay flow and a
+1-minute flow both took about 5 minutes. Immaterial for a 1-hour email, but it
+made testing slow.
 
 ## Klaviyo incident -- why nothing sent during testing
 

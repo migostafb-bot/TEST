@@ -61,23 +61,27 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   `dropalizak2@gmail.com`. It was `live` in that state at the start of the
   session. **Archive or delete `XVDXis`** so it cannot run alongside `Wh7PQn`.
 
-## Flows (current)
+## Flows (LIVE)
 
-| Store | Production (draft, 1h/24h/72h) | Instant test (live) | Sends from |
-|-------|-------------------------------|---------------------|------------|
-| store1 PHARMA FR ™    | `Sj7giC` | `WWHBHx` | `mail@pharmafr.shop` |
-| store2 VIGILIA        | `VciJmz` | `Vqbvfe` | `mail@sourcevie.shop` |
-| store3 PELVIOR™       | `Y5wcqw` | `Sh6ga7` | `mail@lasantefr.shop` |
-| store4 City Pharma FR | `XmRTsv` | `SEsMKZ` | `mail@citypharmafr.shop` |
+All four are **live** and sending, verified end to end on 2026-08-27.
+
+| Store | Flow | Sends from | Shown as |
+|-------|------|------------|----------|
+| store1 | `Sj7giC` | `mail@pharmafr.shop` | PHARMA FR ™ |
+| store2 | `VciJmz` | `mail@sourcevie.shop` | VIGILIA |
+| store3 | `Y5wcqw` | `mail@lasantefr.shop` | PELVIOR™ |
+| store4 | `XmRTsv` | `mail@citypharmafr.shop` | City Pharma FR |
+
+Trigger `Checkout Started`, delays 1h / 23h / 2d (1h, 24h, 72h cumulative),
+three French emails each, all three message actions live.
 
 Each account has its **own** verified sending domain (`send.<store domain>`),
 confirmed by Klaviyo support for store4. The sender address must sit on it or
-DMARC alignment fails, so the four no longer share one address. An earlier
-round had them all on `mail@pharmafer.shop` -- a typo of `pharmafr.shop`, on a
-domain no account has verified.
+DMARC alignment fails.
 
-**Delete the four instant test flows before going live**, or each store sends
-on the same trigger twice.
+The temporary no-delay test flows have been deleted. They sent to ~16 real
+customers *immediately* on abandonment rather than after an hour, which is why
+they were stopped as soon as sending resumed.
 
 ## Klaviyo incident -- why nothing sent during testing
 

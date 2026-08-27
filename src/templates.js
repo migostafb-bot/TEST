@@ -106,6 +106,13 @@ const price = (store, expr) => {
 
 const CHECKOUT_URL = '{{ event.extra.checkout_url|default:organization.url }}';
 
+/**
+ * The unsubscribe link uses the `unsubscribe_link` tag, which yields a bare
+ * URL. The plain `unsubscribe` tag renders an entire anchor element instead,
+ * so putting it in an href nests one anchor inside another and leaks the raw
+ * markup as visible text in the footer. Note both forms are also expanded
+ * inside HTML comments, so neither can be mentioned in the emitted HTML.
+ */
 const layout = (brand, { preheader, body, t, name }) => `<!doctype html>
 <html lang="${t.lang}">
 <head>
@@ -132,7 +139,7 @@ ${t.footerHelp}
 </p>
 <p style="margin:0;font:400 12px/1.6 Helvetica,Arial,sans-serif;color:${brand.muted};">
 {{ organization.name }} &middot; {{ organization.full_address }}<br>
-<a href="{% unsubscribe %}" style="color:${brand.muted};">${t.unsubscribe}</a>
+<a href="{% unsubscribe_link %}" style="color:${brand.muted};">${t.unsubscribe}</a>
 </p>
 </td></tr>
 </table>

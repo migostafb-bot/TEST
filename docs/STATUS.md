@@ -61,32 +61,44 @@ Abandoned-checkout recovery for four French Shopify stores, via Klaviyo.
   `dropalizak2@gmail.com`. It was `live` in that state at the start of the
   session. **Archive or delete `XVDXis`** so it cannot run alongside `Wh7PQn`.
 
-## Test flow (temporary -- delete after testing)
+## Flows (current)
 
-One per store, identical to the real flow except the first wait is 2 minutes
-instead of an hour, so a real abandoned checkout can be verified in one
-sitting.
+| Store | Production (draft, 1h/24h/72h) | Instant test (live) | Sends from |
+|-------|-------------------------------|---------------------|------------|
+| store1 PHARMA FR ™    | `Sj7giC` | `WWHBHx` | `mail@pharmafr.shop` |
+| store2 VIGILIA        | `VciJmz` | `Vqbvfe` | `mail@sourcevie.shop` |
+| store3 PELVIOR™       | `Y5wcqw` | `Sh6ga7` | `mail@lasantefr.shop` |
+| store4 City Pharma FR | `XmRTsv` | `SEsMKZ` | `mail@citypharmafr.shop` |
 
-| Store | Test flow | Production flow |
-|-------|-----------|-----------------|
-| store1 | `Xim9U7` TEST 2min - PHARMA FR      | `WrMQmf` |
-| store2 | `UTvtPm` TEST 2min - VIGILIA       | `UL2dkF` |
-| store3 | `UPttwj` TEST 2min - PELVIOR       | `TkHBqD` |
-| store4 | `QVSreR` TEST 2min - CITY PHARMA FR | `THQSZ6` |
+Each account has its **own** verified sending domain (`send.<store domain>`),
+confirmed by Klaviyo support for store4. The sender address must sit on it or
+DMARC alignment fails, so the four no longer share one address. An earlier
+round had them all on `mail@pharmafer.shop` -- a typo of `pharmafr.shop`, on a
+domain no account has verified.
 
-All eight are currently **draft**. A flow sends nothing until it is set live,
-and setting a test flow live means every customer who abandons a cart on that
-store receives it -- not just whoever is testing.
+**Delete the four instant test flows before going live**, or each store sends
+on the same trigger twice.
 
-**Delete the four test flows once the test passes.** Leaving one live means
-that store sends both it and its production flow on the same trigger.
+## Klaviyo incident -- why nothing sent during testing
 
-Recreate with:
+From 2026-08-26 19:25 UTC, Klaviyo had an open incident where profiles stop
+progressing past a **time-delay** action in flows. Every flow here opens with
+a delay, so test profiles entered, froze, and produced no send, no skip and no
+error -- which is exactly the signature that made this hard to diagnose.
+Support reproduced it on the account. Flows *without* a delay were unaffected,
+which is what `--no-delay` exists for.
 
-```
-node src/deploy-flow.js --from store1 --flow-id <source-flow> --to <store> \
-  --first-delay 2 --name "TEST 2min - <brand>" --confirm
-```
+Status: https://status.klaviyo.com/
+
+## Cannot be done via the API
+
+- **Account settings are read-only.** `PATCH /api/accounts/` needs a revision
+  after 2026-10-15, which does not exist yet, so the default sender address,
+  currency and timezone must be set in the UI. All four accounts still have
+  `default_sender_email = mail@pharmafer.shop`; the flows carry the correct
+  address regardless, since each message sets its own.
+- Sending domains cannot be listed (`GET /api/sending-domains/` has no valid
+  revision) -- check them in Settings > Domains.
 
 ## Next
 

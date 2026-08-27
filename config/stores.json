@@ -47,7 +47,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafr.shop",
+      "fromEmail": "mail@sourcevie.shop",
       "fromLabel": "VIGILIA"
     },
     "currency": "EUR",
@@ -74,7 +74,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafr.shop",
+      "fromEmail": "mail@lasantefr.shop",
       "fromLabel": "PELVIOR™"
     },
     "currency": "EUR",
@@ -101,7 +101,7 @@
     },
     "locale": "fr",
     "sending": {
-      "fromEmail": "mail@pharmafr.shop",
+      "fromEmail": "mail@citypharmafr.shop",
       "fromLabel": "City Pharma FR"
     },
     "currency": "EUR",

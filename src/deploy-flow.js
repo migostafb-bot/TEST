@@ -17,6 +17,10 @@
  *
  * Without --confirm it prints what it would send and creates nothing.
  *
+ * --no-delay  drops the wait before email 1 entirely, so it sends on trigger.
+ *   Klaviyo had an incident where profiles stopped progressing past a
+ *   time-delay action; flows without one were unaffected, which makes this the
+ *   way to test end-to-end while that is happening.
  * --first-delay <minutes>  overrides the wait before email 1. Meant for
  *   testing: 5 minutes instead of an hour makes a real abandoned checkout
  *   testable in one sitting. Use --name to keep such a flow clearly separate
@@ -185,6 +189,13 @@ const main = async () => {
       messageFor: (i) => messages[i],
     });
 
+    if (flag('no-delay')) {
+      const first = definition.actions[0];
+      if (first?.type !== 'time-delay') throw new Error('First action is not a delay; nothing to drop');
+      definition.actions = definition.actions.slice(1);
+      definition.entry_action_id = first.links.next;
+    }
+
     const firstDelay = arg('first-delay');
     if (firstDelay) {
       const minutes = Number(firstDelay);
@@ -214,6 +225,7 @@ const main = async () => {
       console.log(`\n[dry-run] ${targetStore.name}: would create "${name}"`);
       console.log(`  trigger metric  ${sourceTriggerMetric} -> ${metricMap.get(sourceTriggerMetric)} (${TRIGGER_METRIC})`);
       console.log(`  from            ${sending.fromLabel} <${sending.fromEmail}>`);
+      if (flag('no-delay')) console.log('  first delay     REMOVED -- email 1 sends on trigger');
       if (arg('first-delay')) console.log(`  first delay     OVERRIDDEN to ${arg('first-delay')} minutes`);
       definition.actions.forEach((a) => {
         if (a.type === 'send-email') {

@@ -192,7 +192,12 @@ export function extractProduct(html, sourceUrl) {
 }
 
 export async function fetchProduct(url) {
-  const target = new URL(url);
+  let target;
+  try {
+    target = new URL(url);
+  } catch {
+    throw new Error(`Not a valid URL: ${url}. Paste the full address, including https://`);
+  }
   if (!/^https?:$/.test(target.protocol)) throw new Error("Only http(s) URLs are supported.");
 
   const response = await fetch(target.href, {

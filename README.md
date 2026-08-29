@@ -90,6 +90,47 @@ Products are always created as drafts. `SHOPIFY_ALLOW_PUBLISH=true` lifts that,
 but leaving it off means every imported listing gets a human read before it goes
 live — worth it for regulated parapharmacy copy.
 
+## Web app (Fly.io)
+
+`web/` is a small site wrapping the same import flow: paste a competitor URL,
+review the French translation, create the draft. No terminal, and no Claude
+Code usage limits — translation runs through the Claude API instead.
+
+It is password-protected. Anyone who can reach the URL and knows the password
+can create products in your store, so pick a real password.
+
+### Deploy
+
+```bash
+fly launch --no-deploy      # edit `app` in fly.toml to a name you like
+fly secrets set \
+  APP_PASSWORD='<a long password you choose>' \
+  SESSION_SECRET="$(openssl rand -hex 32)" \
+  SHOPIFY_CLIENT_ID='<from Shopify>' \
+  SHOPIFY_CLIENT_SECRET='<from Shopify>' \
+  SHOPIFY_ACCESS_TOKEN="$(node -p "require('./.shopify-token.json').access_token")" \
+  ANTHROPIC_API_KEY='<from console.anthropic.com>'
+fly deploy
+```
+
+`SHOPIFY_ACCESS_TOKEN` comes from the local `.shopify-token.json` written by
+`npm run auth`, so run that first. Secrets live in Fly, never in the repo.
+
+The machine scales to zero when idle and wakes on the first request, so it
+costs nothing while you are not using it.
+
+### Run it locally
+
+```bash
+APP_PASSWORD=test npm run web    # http://localhost:8080
+```
+
+### Cost
+
+Shopify and Fly are free at this volume. The Claude API is billed per
+translation — a typical listing is a few thousand tokens, so cents per product
+rather than euros.
+
 ## Tests
 
 ```bash

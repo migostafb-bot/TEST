@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PARAPHARMA FR — Product Importer</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --ink: #16181d; --muted: #6b7280;
+    --line: #e3e6ea; --accent: #2f6f4f; --accent-ink: #fff;
+    --warn-bg: #fdf3e3; --warn-line: #e8c98a; --warn-ink: #7a5410;
+    --err-bg: #fdeceb; --err-line: #f0b3ae; --err-ink: #8f2018;
+    --ok-bg: #e9f5ee; --ok-line: #a9d6bd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --card: #1c1f25; --ink: #e8eaed; --muted: #9aa3ae;
+      --line: #2c313a; --accent: #4c9e75; --accent-ink: #0d1512;
+      --warn-bg: #2e2717; --warn-line: #5f4d22; --warn-ink: #e5c583;
+      --err-bg: #2f1b1a; --err-line: #6b322d; --err-ink: #f0a89f;
+      --ok-bg: #18291f; --ok-line: #2f5741;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 16px; border-bottom: 1px solid var(--line); background: var(--card); }
+  header h1 { margin: 0; font-size: 17px; letter-spacing: .01em; }
+  header p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+  main { max-width: 940px; margin: 0 auto; padding: 20px 16px 64px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+  label:first-of-type { margin-top: 0; }
+  input, textarea, button { font: inherit; }
+  input[type=text], input[type=password], input[type=url], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink); }
+  textarea { min-height: 190px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; line-height: 1.5; }
+  button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px;
+    padding: 11px 18px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row > * { flex: 1 1 150px; }
+  .row > button { flex: 0 0 auto; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .note { border-radius: 8px; padding: 11px 13px; margin-bottom: 12px; font-size: 13px; }
+  .note.warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); }
+  .note.err  { background: var(--err-bg);  border: 1px solid var(--err-line);  color: var(--err-ink); }
+  .note.ok   { background: var(--ok-bg);   border: 1px solid var(--ok-line); }
+  .note ul { margin: 6px 0 0; padding-left: 18px; }
+  dl { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; word-break: break-word; }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .thumbs img { width: 62px; height: 62px; object-fit: contain; background: #fff;
+    border: 1px solid var(--line); border-radius: 6px; }
+  .hidden { display: none; }
+  .spin::after { content: ""; display: inline-block; width: 12px; height: 12px; margin-left: 8px;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    vertical-align: -2px; animation: r .7s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>PARAPHARMA FR — Product Importer</h1>
+  <p>Paste a competitor product URL. Review the French listing. Create it as a draft.</p>
+</header>
+
+<main>
+  <section id="login" class="card hidden">
+    <h2>Sign in</h2>
+    <div id="login-error" class="note err hidden"></div>
+    <form id="login-form" class="row">
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="card">
+      <h2>Step 1 — Competitor product</h2>
+      <form id="fetch-form" class="row">
+        <input type="url" id="url" placeholder="https://competitor.com/product/…" required>
+        <button type="submit" id="fetch-btn">Fetch &amp; translate</button>
+      </form>
+      <p class="hint">Reads the page, checks your store for an existing listing, and translates it into French.</p>
+      <div id="fetch-error" class="note err hidden"></div>
+    </div>
+
+    <div id="result" class="hidden">
+      <div id="dupe" class="note warn hidden"></div>
+      <div id="claims" class="note warn hidden"></div>
+      <div id="notes" class="note warn hidden"></div>
+
+      <div class="card">
+        <h2>Source</h2>
+        <dl id="source-facts"></dl>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+
+      <div class="card">
+        <h2>Step 2 — French listing (edit anything)</h2>
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title">
+        <label for="f-handle">URL handle</label>
+        <input type="text" id="f-handle">
+        <label for="f-desc">Description (HTML)</label>
+        <textarea id="f-desc"></textarea>
+        <div class="row">
+          <div>
+            <label for="f-seotitle">SEO title</label>
+            <input type="text" id="f-seotitle">
+          </div>
+          <div>
+            <label for="f-type">Product type</label>
+            <input type="text" id="f-type">
+          </div>
+        </div>
+        <label for="f-seodesc">SEO description</label>
+        <input type="text" id="f-seodesc">
+        <label for="f-tags">Tags (comma separated)</label>
+        <input type="text" id="f-tags">
+      </div>
+
+      <div class="card">
+        <h2>Step 3 — Price</h2>
+        <p class="hint" id="ref-price"></p>
+        <div class="row">
+          <div>
+            <label for="f-price">Your price (EUR)</label>
+            <input type="text" id="f-price" placeholder="e.g. 14.90">
+          </div>
+          <div>
+            <label for="f-compare">Compare-at price (optional)</label>
+            <input type="text" id="f-compare">
+          </div>
+        </div>
+        <p class="hint">Left blank, the product is created without a price and you set it in Shopify.</p>
+      </div>
+
+      <div class="card">
+        <div id="create-error" class="note err hidden"></div>
+        <div id="create-ok" class="note ok hidden"></div>
+        <div class="row">
+          <button id="create-btn" style="flex:0 0 auto">Create draft in Shopify</button>
+          <button class="secondary" id="reset-btn" style="flex:0 0 auto" type="button">Start another</button>
+        </div>
+        <p class="hint">Created as a draft — nothing goes live until you publish it in Shopify.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const show = (el, on = true) => el.classList.toggle("hidden", !on);
+let current = null;
+
+function note(el, html) {
+  if (!html) return show(el, false);
+  el.innerHTML = html;
+  show(el, true);
+}
+
+function list(title, items) {
+  return `<strong>${title}</strong><ul>${items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>`;
+}
+
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+  const data = await res.json().catch(() => ({ error: "Unexpected server response." }));
+  if (res.status === 401 && path !== "/api/login") { showLogin(); throw new Error("Session expired — sign in again."); }
+  if (!res.ok) throw new Error(data.error || "Something went wrong.");
+  return data;
+}
+
+function showLogin() { show($("login"), true); show($("app"), false); }
+function showApp() { show($("login"), false); show($("app"), true); }
+
+$("login-form").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api("/api/login", { password: $("password").value });
+    localStorage.setItem("signed_in", "1");
+    show($("login-error"), false);
+    $("password").value = "";
+    showApp();
+  } catch (err) { note($("login-error"), escapeHtml(err.message)); }
+};
+
+$("fetch-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $("fetch-btn");
+  btn.disabled = true; btn.classList.add("spin"); btn.textContent = "Working";
+  show($("fetch-error"), false); show($("result"), false);
+  try {
+    const data = await api("/api/preview", { url: $("url").value });
+    current = data;
+    render(data);
+    show($("result"), true);
+  } catch (err) {
+    note($("fetch-error"), escapeHtml(err.message));
+  } finally {
+    btn.disabled = false; btn.classList.remove("spin"); btn.textContent = "Fetch & translate";
+  }
+};
+
+function render({ source, duplicates, french }) {
+  const facts = [
+    ["Title", source.title], ["Brand", source.brand], ["EAN", source.ean],
+    ["SKU", source.sku], ["Category", source.category],
+    ["Price", source.reference_price ? `${source.reference_price} ${source.reference_currency ?? ""}` : null],
+  ].filter(([, v]) => v);
+  $("source-facts").innerHTML = facts
+    .map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  $("thumbs").innerHTML = (source.images ?? [])
+    .map((u) => `<img src="${escapeHtml(u)}" alt="" loading="lazy">`).join("");
+
+  note($("dupe"), duplicates?.length
+    ? list("Already in your store — check before creating a second listing:",
+        duplicates.map((d) => `${d.title} (${d.status.toLowerCase()}, matched on ${d.reason})`))
+    : null);
+  note($("claims"), french.claim_warnings?.length
+    ? list("Health claims to review before publishing:", french.claim_warnings) : null);
+  note($("notes"), french.translator_notes?.length
+    ? list("Translator notes:", french.translator_notes) : null);
+
+  $("f-title").value = french.title ?? "";
+  $("f-handle").value = french.handle ?? "";
+  $("f-desc").value = french.descriptionHtml ?? "";
+  $("f-seotitle").value = french.seoTitle ?? "";
+  $("f-seodesc").value = french.seoDescription ?? "";
+  $("f-type").value = french.productType ?? "";
+  $("f-tags").value = (french.tags ?? []).join(", ");
+  $("f-price").value = "";
+  $("f-compare").value = "";
+  $("ref-price").textContent = source.reference_price
+    ? `Competitor's price: ${source.reference_price} ${source.reference_currency ?? ""}. Set your own price — this is not copied across.`
+    : "No price found on the source page.";
+  show($("create-ok"), false); show($("create-error"), false);
+}
+
+$("create-btn").onclick = async () => {
+  const btn = $("create-btn");
+  btn.disabled = true; btn.classList.add("spin"); btn.textContent = "Creating";
+  show($("create-error"), false);
+  try {
+    const created = await api("/api/create", {
+      title: $("f-title").value,
+      handle: $("f-handle").value || undefined,
+      descriptionHtml: $("f-desc").value,
+      seoTitle: $("f-seotitle").value || undefined,
+      seoDescription: $("f-seodesc").value || undefined,
+      productType: $("f-type").value || undefined,
+      tags: $("f-tags").value.split(",").map((t) => t.trim()).filter(Boolean),
+      vendor: current?.source?.brand || undefined,
+      barcode: current?.source?.ean || undefined,
+      sku: current?.source?.sku || undefined,
+      images: current?.source?.images ?? [],
+      price: $("f-price").value.trim() || undefined,
+      compareAtPrice: $("f-compare").value.trim() || undefined,
+      sourceUrl: current?.source?.source_url,
+    });
+    note($("create-ok"),
+      `Draft created. <a href="${escapeHtml(created.admin_url)}" target="_blank" rel="noopener">Open it in Shopify</a> to review and publish.`);
+  } catch (err) {
+    note($("create-error"), escapeHtml(err.message));
+  } finally {
+    btn.disabled = false; btn.classList.remove("spin"); btn.textContent = "Create draft in Shopify";
+  }
+};
+
+$("reset-btn").onclick = () => {
+  current = null; $("url").value = "";
+  show($("result"), false); window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+(localStorage.getItem("signed_in") ? showApp : showLogin)();
+</script>
+</body>
+</html>

@@ -80,7 +80,10 @@ what margin to apply, unless the user has already given a rule.
 
 ## Safety rails
 
-- Products are created as `DRAFT`. Do not pass `status: ACTIVE`.
+- Use the status the run asks for: `SHOPIFY_PRODUCT_STATUS` decides `ACTIVE` or
+  `DRAFT`, and the import prompt names it explicitly. Do not override it.
+- An `ACTIVE` product must have a price. `create_product` refuses to publish one
+  priced at 0, because a live product at 0,00 € can be bought for nothing.
 - Theme writes need `write_themes` on the token and a theme named in
   `SHOPIFY_THEME`. The template is only used by products assigned to it, so
   writing it does not change any existing page.

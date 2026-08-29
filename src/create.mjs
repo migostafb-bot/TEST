@@ -71,6 +71,14 @@ export async function createProduct(input) {
     );
   }
 
+  // A published product with no price sells for nothing.
+  if (status === "ACTIVE" && !(Number(price) > 0)) {
+    throw new Error(
+      "Refusing to publish a product with no price: an ACTIVE product at 0,00 € can be bought " +
+        "for free. Pass a price, or create it as DRAFT and price it in Shopify.",
+    );
+  }
+
   const product = {
     title: title.trim(),
     status,

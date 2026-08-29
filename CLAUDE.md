@@ -21,6 +21,10 @@ When given a competitor product URL, run this loop:
 7. `install_product_page` with those translations, the product, and
    `templateName` set to the French product title. This writes a theme section
    and a `product.<suffix>.json` template, and assigns it to the product.
+   It also repoints every imported call-to-action button at this store's buy
+   box, so they scroll to the quantity selector instead of the competitor.
+   Check the returned `sections` count matches what `read_competitor_page`
+   reported, and report `remaining_english` if it is not empty.
 8. Report the admin URL and note anything that needs a human decision —
    especially price and any health claims.
 
@@ -37,9 +41,20 @@ job, not a rewrite:
 - Keep the same paragraph and list markup in `descriptionHtml`: the same
   `<p>`, `<ul>`, `<li>`, `<h2>`, `<table>`, `<strong>` structure as the source.
 - Do not add, drop, or embellish claims.
-- Keep brand names, INCI ingredient names, product line names and dosages
-  exactly as they appear — INCI is a standardised Latin nomenclature and is
-  never translated.
+- Keep INCI ingredient names and dosages exactly as they appear — INCI is a
+  standardised Latin nomenclature and is never translated.
+- **Rebrand.** Replace the competitor's product and brand name everywhere with
+  the store's own brand from `SHOPIFY_BRAND` (including the ™ symbol if the
+  value has one), spelled identically every time — headings, body, alt text,
+  reviews, buttons, badges. If `SHOPIFY_BRAND` is unset, keep the source name.
+- **Localise, don't just translate.** First names in reviews and testimonials
+  become common French first names; US cities, states and references become
+  French equivalents; imperial units become metric.
+- **Money in French format:** `39,99 €` — comma decimal, space before the
+  euro sign. Convert the competitor's currency rather than copying the number.
+- **Nothing stays in English.** Check buttons, badges, labels, `alt` text,
+  `title` and `aria-label`. `install_product_page` reports anything it still
+  finds in `remaining_english` — if that list is not empty, say so.
 - Use standard French parapharmacy register (`peau sensible`, `application`,
   `soin`, `flacon`, `tube`), and vouvoiement.
 - Convert units to metric if the source is imperial.

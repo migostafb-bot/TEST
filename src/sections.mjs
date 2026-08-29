@@ -227,6 +227,45 @@ export function visibilityOverrides(scope) {
   ].join("\n");
 }
 
+// Imported call-to-action buttons point at the competitor's cart or a dead
+// anchor. Repoint them at this store's buy box: tagging them here and letting
+// the section's own script find the add-to-cart form keeps it theme-agnostic.
+export function rewriteCtas(html) {
+  let count = 0;
+  const rewritten = html.replace(/<a\b([^>]*)>/gi, (tag, attrs) => {
+    if (/\bhref=["']#/i.test(attrs)) return tag; // in-page anchor, leave it
+    const href = /\bhref=["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+    const isCta =
+      /\/cart|\/checkout|add[-_]?to[-_]?cart|\/products\//i.test(href) || /\bclass=["'][^"']*\b(btn|button|cta)\b/i.test(attrs);
+    if (!isCta) return tag;
+    count += 1;
+    const stripped = attrs.replace(/\bhref=["'][^"']*["']/i, "").replace(/\btarget=["'][^"']*["']/i, "");
+    return `<a href="#" data-pf-cta="1"${stripped}>`;
+  });
+  return { html: rewritten, count };
+}
+
+// Scrolls to the product form and focuses the quantity selector, so every
+// imported button sends the shopper to the buy box.
+export function ctaScript() {
+  return [
+    `<script>`,
+    `  (function () {`,
+    `    document.addEventListener("click", function (event) {`,
+    `      var trigger = event.target.closest("[data-pf-cta]");`,
+    `      if (!trigger) return;`,
+    `      event.preventDefault();`,
+    `      var form = document.querySelector('form[action*="/cart/add"]');`,
+    `      var target = form || document.querySelector("main") || document.body;`,
+    `      target.scrollIntoView({ behavior: "smooth", block: "center" });`,
+    `      var quantity = form && form.querySelector('input[name="quantity"], select[name="quantity"]');`,
+    `      if (quantity) window.setTimeout(function () { quantity.focus(); }, 600);`,
+    `    });`,
+    `  })();`,
+    `</script>`,
+  ].join("\n");
+}
+
 export function imageUrls(html) {
   const urls = new Set();
   for (const [, value] of html.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["']/gi)) urls.add(value);

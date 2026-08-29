@@ -81,7 +81,7 @@ export async function setProductTemplate(productId, templateSuffix) {
 
 // A Shopify section file: the imported markup, its scoped styles, and a schema
 // block so the section is valid and appears in the theme editor.
-export function buildSectionLiquid({ sectionName, scope, html, css }) {
+export function buildSectionLiquid({ sectionName, scope, html, css, script = "" }) {
   const schema = {
     name: sectionName.slice(0, 25), // Shopify caps section names
     settings: [],
@@ -101,6 +101,8 @@ export function buildSectionLiquid({ sectionName, scope, html, css }) {
     `<div class="${scope.replace(/^\./, "")}">`,
     html,
     `</div>`,
+    ``,
+    script,
     ``,
     `{% schema %}`,
     JSON.stringify(schema, null, 2),

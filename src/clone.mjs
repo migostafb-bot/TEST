@@ -1,7 +1,16 @@
 // Copies a competitor's product page sections onto a product in this store.
 // Split in two so the translation happens in between: `readPage` returns the
 // strings to translate, `installPage` puts the translated page into the theme.
-import { contentSections, selectorsUsed, pruneCss, scopeCss, visibilityOverrides, imageUrls } from "./sections.mjs";
+import {
+  contentSections,
+  selectorsUsed,
+  pruneCss,
+  scopeCss,
+  visibilityOverrides,
+  imageUrls,
+  rewriteCtas,
+  ctaScript,
+} from "./sections.mjs";
 import { extractTexts, applyTexts } from "./textnodes.mjs";
 import { findTheme, readThemeFile, writeThemeFiles, setProductTemplate, buildSectionLiquid, buildProductTemplate } from "./theme.mjs";
 import { adminGraphQL } from "./shopify.mjs";
@@ -101,7 +110,7 @@ export async function installPage({ page, translations, productId, templateName,
 
   // Hand each section back its own slice of the translated list.
   let cursor = 0;
-  const html = page.sections
+  const translated = page.sections
     .map((section) => {
       const slice = translations.slice(cursor, cursor + section.texts.length);
       cursor += section.texts.length;
@@ -109,6 +118,7 @@ export async function installPage({ page, translations, productId, templateName,
     })
     .join("\n");
 
+  const { html, count: ctaCount } = rewriteCtas(translated);
   const used = selectorsUsed(html);
   const css = [scopeCss(pruneCss(page.css, used), scope), visibilityOverrides(scope)].join("\n");
 
@@ -121,7 +131,7 @@ export async function installPage({ page, translations, productId, templateName,
   const written = await writeThemeFiles(theme.id, [
     {
       filename: sectionFile,
-      content: buildSectionLiquid({ sectionName: templateName, scope, html, css }),
+      content: buildSectionLiquid({ sectionName: templateName, scope, html, css, script: ctaScript() }),
     },
     {
       filename: templateFile,
@@ -139,6 +149,8 @@ export async function installPage({ page, translations, productId, templateName,
     css_bytes: css.length,
     html_bytes: html.length,
     sections: page.section_count,
+    cta_buttons_repointed: ctaCount,
+    remaining_english: findEnglishLeftovers(html),
     note:
       theme.role === "MAIN"
         ? "Written to the LIVE theme. The template is only used by products assigned to it."
@@ -155,4 +167,17 @@ export async function findProduct(handleOrId) {
   );
   if (!data.productByIdentifier) throw new Error(`No product with handle "${handleOrId}".`);
   return data.productByIdentifier;
+}
+
+// A last check before delivery: obvious English that slipped through. Reported
+// rather than fixed, so it is visible instead of silently wrong.
+const ENGLISH_GIVEAWAYS =
+  /\b(add to cart|buy now|checkout|free shipping|money[- ]back|guarantee|reviews?|shop now|learn more|sold out|in stock|customer|benefits|how it works|ingredients|shipping|returns)\b/gi;
+
+export function findEnglishLeftovers(html) {
+  const text = html
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  const hits = [...new Set((text.match(ENGLISH_GIVEAWAYS) ?? []).map((h) => h.toLowerCase()))];
+  return hits.slice(0, 12);
 }

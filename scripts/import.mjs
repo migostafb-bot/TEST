@@ -59,6 +59,7 @@ function parseArgs(argv) {
 }
 
 const STATUS = process.env.SHOPIFY_PRODUCT_STATUS || "DRAFT";
+const BRAND = process.env.SHOPIFY_BRAND || "";
 
 function prompt(url) {
   return [
@@ -77,7 +78,15 @@ function prompt(url) {
     "   one French string per source string, in the same order and the same count.",
     "   Strings are page fragments and some are split mid-sentence by markup: translate",
     "   each in place so the pieces still read correctly when joined. Never merge, split,",
-    "   drop or reorder them. Leave brand names, INCI names, dosages and numbers as they are.",
+    "   drop or reorder them. Leave INCI names and dosages as they are.",
+    ...(BRAND
+      ? [
+          `   Replace the competitor's product and brand name everywhere with "${BRAND}",`,
+          "   spelled identically every time.",
+        ]
+      : []),
+    "   Localise: French first names in reviews, French cities, metric units, and prices",
+    "   in French format (39,99 €).",
     "7. install_product_page with those translations, the product handle you just created,",
     "   and templateName set to the French product title.",
     "",

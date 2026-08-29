@@ -32,8 +32,28 @@ const MARKER_PATTERN = /«T(\d+)»/g;
 // JSON <script> and render it with JavaScript. That text is invisible to a
 // tag-based scan, so the widget prints the original language back onto the
 // page. Walk the JSON and mark its strings too.
-const JSON_SCRIPT =
-  /(<script\b[^>]*\btype=["'](?:application\/json|text\/template)["'][^>]*>)([\s\S]*?)(<\/script>)/gi;
+// Any <script>, whatever its type: widgets hold their copy as a bare JSON
+// body, or as `window.reviews = {...}` in ordinary JavaScript. Matching only
+// type="application/json" missed the common case and left reviews in English.
+const JSON_SCRIPT = /(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
+
+// Returns [prefix, jsonText, suffix] when a script body holds a JSON payload,
+// so the surrounding JavaScript is preserved byte for byte.
+function findJsonPayload(body) {
+  const trimmed = body.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    const lead = body.slice(0, body.indexOf(trimmed[0]));
+    return [lead, trimmed, body.slice(lead.length + trimmed.length)];
+  }
+
+  // `var x = {...}` / `window.data = [...]`, optionally with a trailing ;
+  const assignment = /^([\s\S]*?=\s*)([[{][\s\S]*[\]}])(\s*;?\s*)$/.exec(body);
+  if (assignment) return [assignment[1], assignment[2], assignment[3]];
+
+  return null;
+}
 
 // Keys holding identifiers, URLs or markup are left untouched - translating
 // them would break whatever reads them.
@@ -59,11 +79,14 @@ function markJsonStrings(value, texts) {
 
 export function extractJsonScripts(html, texts) {
   return html.replace(JSON_SCRIPT, (whole, open, body, close) => {
+    const payload = findJsonPayload(body);
+    if (!payload) return whole;
+    const [lead, json, trail] = payload;
     try {
-      const marked = markJsonStrings(JSON.parse(body.trim()), texts);
+      const marked = markJsonStrings(JSON.parse(json), texts);
       // Re-serialised through JSON.stringify, so translated text containing
       // quotes or backslashes is escaped correctly when it is put back.
-      return `${open}${JSON.stringify(marked)}${close}`;
+      return `${open}${lead}${JSON.stringify(marked)}${trail}${close}`;
     } catch {
       return whole; // not valid JSON - leave it exactly as it was
     }

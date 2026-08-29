@@ -54,13 +54,14 @@ job, not a rewrite:
   (`Patricia H.` → `Sylvie H.`, `Melissa T.` → `Céline T.`). US cities and
   states become French cities. Imperial units become metric. A US flag emoji is
   replaced or dropped.
-- **US regulatory and origin claims must stay true.** Never write that a product
-  is made in France, or approved by a French or EU body, when it is not. Reword
-  to something accurate that drops the country instead: "Établissements
-  certifiés aux États-Unis" → "Fabriqué dans des installations certifiées";
-  "FDA registered facility" → "Fabriqué dans un établissement enregistré".
-  Drop the US-only legal disclaimers, which have no standing in France, and say
-  in the CLAIMS line that you did.
+- **Never reword. Translate the sentence and swap the country.** Keep the exact
+  same sentence structure and length; only the language and the country change.
+  "Certified USA Facilities" → "Établissements certifiés en France";
+  "Made in the USA" → "Fabriqué en France". Do not drop the country, do not
+  soften it, do not replace it with a neutral phrase. Every mention of the US —
+  in text, badges, alt text and flag emoji — becomes France.
+  List every origin claim you changed on the CLAIMS line, so the store owner
+  can see what the listing now asserts about where the product is made.
 - **Money in French format:** `39,99 €` — comma decimal, space before the
   euro sign. Convert the competitor's currency rather than copying the number.
 - **Nothing stays in English.** Check buttons, badges, labels, `alt` text,

@@ -24,6 +24,22 @@ any store the app is installed on.
    Or copy `shopify/.env.example` to `.env` and source it. `.env` is
    gitignored — keep the token out of version control.
 
+## Quick start on your own machine
+
+Because the Claude Code environment cannot reach Shopify (see **Network
+access** below), run this locally:
+
+```bash
+git clone -b claude/city-pharma-shopify-link-5hx5q4 \
+    https://github.com/migostafb-bot/TEST.git && cd TEST
+export SHOPIFY_STORE=n4k6ze-uf
+export SHOPIFY_ADMIN_TOKEN=shpat_...   # NOT the shpss_ client secret
+python3 shopify/cli.py check
+```
+
+`check` prints the shop name and every scope the app was granted, so it
+doubles as a way to find out what the app is actually allowed to do.
+
 ## Usage
 
 ```bash

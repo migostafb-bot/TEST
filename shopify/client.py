@@ -49,6 +49,15 @@ class Shopify:
     def __init__(self, store=None, token=None, api_version=None):
         self.domain = shop_domain(store)
         self.token = token or os.environ.get("SHOPIFY_ADMIN_TOKEN", "").strip()
+        if self.token.startswith("shpss_"):
+            raise ShopifyError(
+                "That looks like an app client secret (shpss_...), not an Admin "
+                "API access token. The client secret only signs the OAuth "
+                "handshake and verifies webhook HMACs; the Admin API will reject "
+                "it. Get a token starting with shpat_ from the store admin under "
+                "Settings > Apps and sales channels > Develop apps > your app > "
+                "API credentials, or complete the OAuth flow to obtain one."
+            )
         if not self.token:
             raise ShopifyError(
                 "SHOPIFY_ADMIN_TOKEN is not set. In the Shopify admin open "

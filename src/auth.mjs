@@ -40,16 +40,27 @@ async function exchange(code) {
   return response.json();
 }
 
-const authorizeUrl =
-  `https://${config.store}/admin/oauth/authorize` +
-  `?client_id=${encodeURIComponent(config.clientId)}` +
-  `&scope=${encodeURIComponent(config.scopes.join(","))}` +
-  `&redirect_uri=${encodeURIComponent(config.redirectUri)}` +
-  `&state=${state}` +
-  `&grant_options[]=`; // empty = offline token that does not expire
+const authorizeUrl = (() => {
+  const url = new URL(`https://${config.store}/admin/oauth/authorize`);
+  url.searchParams.set("client_id", config.clientId);
+  url.searchParams.set("scope", config.scopes.join(","));
+  url.searchParams.set("redirect_uri", config.redirectUri);
+  url.searchParams.set("state", state);
+  url.searchParams.set("grant_options[]", ""); // empty = offline token that does not expire
+  return url.href;
+})();
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
+
+  // macOS `open` re-encodes % in a URL argument (%2C becomes %252C), which
+  // corrupts the scope and redirect_uri. Opening a plain localhost URL and
+  // redirecting from here keeps Shopify's parameters intact.
+  if (url.pathname === "/start") {
+    res.writeHead(302, { Location: authorizeUrl }).end();
+    return;
+  }
+
   if (url.pathname !== redirect.pathname) {
     res.writeHead(404).end("Not found");
     return;
@@ -84,8 +95,11 @@ const server = createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log(`Listening on ${config.redirectUri}`);
-  console.log(`\nOpen this URL while logged in as a staff account for ${config.store}:\n`);
-  console.log(authorizeUrl + "\n");
+  const startUrl = `http://localhost:${port}/start`;
+  console.log(`\nOpening ${startUrl} - it redirects to Shopify.`);
+  console.log(`If no browser opens, paste that localhost address in yourself.`);
+  console.log(`Sign in as a staff account for ${config.store}.\n`);
+  console.log(`Requesting scopes: ${config.scopes.join(", ")}\n`);
   const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-  spawn(opener, [authorizeUrl], { stdio: "ignore", detached: true }).on("error", () => {}).unref();
+  spawn(opener, [startUrl], { stdio: "ignore", detached: true }).on("error", () => {}).unref();
 });

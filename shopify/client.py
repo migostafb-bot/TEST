@@ -49,6 +49,14 @@ class Shopify:
     def __init__(self, store=None, token=None, api_version=None):
         self.domain = shop_domain(store)
         self.token = token or os.environ.get("SHOPIFY_ADMIN_TOKEN", "").strip()
+        if "..." in self.token or self.token in ("shpat_", "shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"):
+            raise ShopifyError(
+                "SHOPIFY_ADMIN_TOKEN is still a placeholder (%r). Replace it "
+                "with the real token from the store admin: Settings > Apps and "
+                "sales channels > Develop apps > your app > API credentials > "
+                "Admin API access token. It starts with shpat_ and is about 38 "
+                "characters long." % self.token
+            )
         if self.token.startswith("shpss_"):
             raise ShopifyError(
                 "That looks like an app client secret (shpss_...), not an Admin "

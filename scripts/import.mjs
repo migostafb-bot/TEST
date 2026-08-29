@@ -20,6 +20,8 @@ const ALLOWED = [
   "mcp__shopify__fetch_competitor_product",
   "mcp__shopify__check_duplicate",
   "mcp__shopify__create_product",
+  "mcp__shopify__read_competitor_page",
+  "mcp__shopify__install_product_page",
 ];
 
 // --restricted drops the shell and file tools, but only exists in newer Claude
@@ -57,7 +59,7 @@ function parseArgs(argv) {
 
 function prompt(url) {
   return [
-    `Import this competitor product into the store: ${url}`,
+    `Import this competitor product into the store, with its full page: ${url}`,
     "",
     "Follow the listing workflow in CLAUDE.md exactly:",
     "1. fetch_competitor_product for the URL.",
@@ -65,9 +67,18 @@ function prompt(url) {
     "   listed, stop and report that - do not create a second listing.",
     "3. Translate the listing into French, faithfully, per the translation rules.",
     "4. create_product with the French fields. Leave the price unset - the owner sets it.",
+    "5. read_competitor_page for the same URL. It returns every string from the page",
+    "   sections below the buy box.",
+    "6. Translate that whole list into French, following the same rules. Return exactly",
+    "   one French string per source string, in the same order and the same count.",
+    "   Strings are page fragments and some are split mid-sentence by markup: translate",
+    "   each in place so the pieces still read correctly when joined. Never merge, split,",
+    "   drop or reorder them. Leave brand names, INCI names, dosages and numbers as they are.",
+    "7. install_product_page with those translations, the product handle you just created,",
+    "   and templateName set to the French product title.",
     "",
     "Then reply with exactly one line, no other prose:",
-    "  CREATED <admin url> | <french title>",
+    "  CREATED <admin url> | <french title> | template <suffix> | <n> sections",
     "  or SKIPPED <reason>",
     "  or FAILED <reason>",
     "If any health claim needs review, add a second line starting with CLAIMS.",

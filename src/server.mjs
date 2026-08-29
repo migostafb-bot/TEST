@@ -7,6 +7,7 @@ import { config } from "./config.mjs";
 import { adminGraphQL, assertReadOnly } from "./shopify.mjs";
 import { fetchProduct } from "./scrape.mjs";
 import { createProduct, findExisting } from "./create.mjs";
+import { readPage, installPage, findProduct } from "./clone.mjs";
 
 const server = new McpServer({ name: "shopify", version: "1.0.0" });
 
@@ -220,6 +221,61 @@ tool(
     status: z.enum(["DRAFT", "ACTIVE"]).optional().default("DRAFT"),
   },
   async (args) => createProduct(args),
+);
+
+
+// The fetched page (including ~1MB of theme CSS) is held here rather than
+// returned, so only the strings needing translation cross into the model.
+const pageCache = new Map();
+
+tool(
+  "read_competitor_page",
+  "Fetch a competitor product page and return the text of every content section below the buy box, " +
+    "ready to translate. Call install_product_page next with the French translations.",
+  { url: z.string().describe("Competitor product page URL") },
+  async ({ url }) => {
+    const page = await readPage(url);
+    pageCache.set(url, page);
+    return {
+      source_url: url,
+      section_count: page.section_count,
+      image_count: page.images.length,
+      text_count: page.texts.length,
+      // Translate these in order and pass the same number back, same order.
+      texts: page.texts,
+    };
+  },
+);
+
+tool(
+  "install_product_page",
+  "Install the translated page as a theme template and assign it to the product. Pass `translations` " +
+    "as the French version of every string from read_competitor_page, in the same order and count.",
+  {
+    url: z.string().describe("The same URL passed to read_competitor_page"),
+    translations: z.array(z.string()).describe("French strings, same order and length as `texts`"),
+    product: z.string().describe("Product handle, numeric id, or gid to attach the template to"),
+    templateName: z.string().describe("Template name, normally the French product title"),
+    themeName: z.string().optional().describe("Theme to write into; defaults to SHOPIFY_THEME or the live theme"),
+  },
+  async ({ url, translations, product, templateName, themeName }) => {
+    const page = pageCache.get(url);
+    if (!page) throw new Error("Call read_competitor_page for this URL first.");
+    if (translations.length !== page.texts.length) {
+      throw new Error(
+        `Expected ${page.texts.length} translations, got ${translations.length}. ` +
+          "Return one French string per source string, in the same order.",
+      );
+    }
+    const target = await findProduct(product);
+    return installPage({
+      page,
+      translations,
+      productId: target.id,
+      templateName,
+      themeName: themeName ?? process.env.SHOPIFY_THEME,
+    });
+  },
 );
 
 const transport = new StdioServerTransport();

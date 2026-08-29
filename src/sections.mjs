@@ -17,30 +17,39 @@ const CHROME = [
   /recently[-_]?viewed/i,
 ];
 
+// Themes wrap sections in whatever element they like - <section> and <div>
+// are both common - so match the id and then track that element's own tag.
 export function splitSections(html) {
   const sections = [];
-  const open = /<section\b[^>]*\bid=["'](shopify-section-[^"']+)["'][^>]*>/gi;
+  const open = /<([a-z][a-z0-9-]*)\b[^>]*\bid=["'](shopify-section-[^"']+)["'][^>]*>/gi;
   let match;
 
   while ((match = open.exec(html))) {
+    const [opening, tagName, id] = match;
     const start = match.index;
-    // Walk forward counting nested <section> tags to find this one's close.
+
+    // Self-closing or void element: nothing to walk.
+    if (opening.endsWith("/>")) {
+      sections.push({ id, tag: tagName, html: opening });
+      open.lastIndex = start + opening.length;
+      continue;
+    }
+
     let depth = 0;
-    let index = start;
-    const tag = /<\/?section\b[^>]*>/gi;
-    tag.lastIndex = start;
     let end = -1;
+    const tag = new RegExp(`<\\/?${tagName}\\b[^>]*>`, "gi");
+    tag.lastIndex = start;
     let inner;
     while ((inner = tag.exec(html))) {
+      if (inner[0].endsWith("/>")) continue; // self-closing, no depth change
       depth += inner[0].startsWith("</") ? -1 : 1;
-      index = inner.index + inner[0].length;
       if (depth === 0) {
-        end = index;
+        end = inner.index + inner[0].length;
         break;
       }
     }
     if (end === -1) continue;
-    sections.push({ id: match[1], html: html.slice(start, end) });
+    sections.push({ id, tag: tagName, html: html.slice(start, end) });
     open.lastIndex = end;
   }
   return sections;

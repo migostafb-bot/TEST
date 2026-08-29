@@ -12,7 +12,16 @@ When given a competitor product URL, run this loop:
    listed, stop and say so — do not create a second listing.
 3. Translate the listing into French (see rules below).
 4. `create_product` with the French fields. It lands as a **DRAFT**.
-5. Report the admin URL and note anything that needs a human decision —
+5. `read_competitor_page` for the same URL — it returns every string from the
+   page sections below the buy box.
+6. Translate that list into French. Return exactly one French string per source
+   string, same order, same count. Strings are page fragments and some are split
+   mid-sentence by markup: translate each in place so the pieces read correctly
+   when joined. Never merge, split, drop or reorder them.
+7. `install_product_page` with those translations, the product, and
+   `templateName` set to the French product title. This writes a theme section
+   and a `product.<suffix>.json` template, and assigns it to the product.
+8. Report the admin URL and note anything that needs a human decision —
    especially price and any health claims.
 
 ## Translation rules
@@ -46,6 +55,9 @@ what margin to apply, unless the user has already given a rule.
 ## Safety rails
 
 - Products are created as `DRAFT`. Do not pass `status: ACTIVE`.
+- Theme writes need `write_themes` on the token and a theme named in
+  `SHOPIFY_THEME`. The template is only used by products assigned to it, so
+  writing it does not change any existing page.
 - Writes require `SHOPIFY_ALLOW_WRITES=true` in `.env`.
 - Flag any strong medical claim ("treats", "cures", "guarantees") for review —
   French/EU rules on health and cosmetic claims are strict, and the listing is

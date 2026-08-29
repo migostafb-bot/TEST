@@ -291,7 +291,14 @@ $("reset-btn").onclick = () => {
   show($("result"), false); window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-(localStorage.getItem("signed_in") ? showApp : showLogin)();
+// Skip the login screen entirely when the server runs without a password.
+fetch("/api/config")
+  .then((r) => r.json())
+  .then(({ authRequired }) => {
+    if (!authRequired || localStorage.getItem("signed_in")) showApp();
+    else showLogin();
+  })
+  .catch(() => showLogin());
 </script>
 </body>
 </html>

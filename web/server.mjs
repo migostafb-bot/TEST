@@ -13,10 +13,12 @@ import { createProduct, findExisting } from "../src/create.mjs";
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 
-const PASSWORD = process.env.APP_PASSWORD;
-if (!PASSWORD) {
-  console.error("APP_PASSWORD is not set. Refusing to start an unprotected store front end.");
-  process.exit(1);
+// With no APP_PASSWORD set the site is open to anyone who knows the URL.
+// That is a deliberate choice: keep the address private.
+const PASSWORD = process.env.APP_PASSWORD || "";
+const AUTH_REQUIRED = PASSWORD.length > 0;
+if (!AUTH_REQUIRED) {
+  console.warn("APP_PASSWORD is not set - running with no login. Anyone with the URL can create products.");
 }
 // Rotates on restart, which logs everyone out - acceptable for a single-operator tool.
 const SESSION_SECRET = process.env.SESSION_SECRET || randomBytes(32).toString("hex");
@@ -51,7 +53,10 @@ function passwordMatches(candidate) {
   return timingSafeEqual(a, b);
 }
 
+app.get("/api/config", (_req, res) => res.json({ authRequired: AUTH_REQUIRED }));
+
 app.post("/api/login", (req, res) => {
+  if (!AUTH_REQUIRED) return res.json({ ok: true });
   if (!passwordMatches(req.body?.password)) {
     return res.status(401).json({ error: "Wrong password." });
   }
@@ -73,7 +78,7 @@ app.post("/api/logout", (_req, res) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 function requireAuth(req, res, next) {
-  if (!valid(readCookie(req))) return res.status(401).json({ error: "Not signed in." });
+  if (AUTH_REQUIRED && !valid(readCookie(req))) return res.status(401).json({ error: "Not signed in." });
   next();
 }
 

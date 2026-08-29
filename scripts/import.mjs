@@ -6,7 +6,7 @@
 //   npm run import -- https://competitor.com/product/a
 //   npm run import -- https://a.com/p1 https://b.com/p2
 //   npm run import -- --file urls.txt
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +21,19 @@ const ALLOWED = [
   "mcp__shopify__check_duplicate",
   "mcp__shopify__create_product",
 ];
+
+// --restricted drops the shell and file tools, but only exists in newer Claude
+// Code releases. The allow-list below is what actually constrains the run, so
+// on older versions we simply leave the flag out.
+const SUPPORTS_RESTRICTED = (() => {
+  try {
+    return execFileSync("claude", ["--help"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).includes(
+      "--restricted",
+    );
+  } catch {
+    return false;
+  }
+})();
 
 function parseArgs(argv) {
   const urls = [];
@@ -72,7 +85,7 @@ function runClaude(url) {
         ALLOWED.join(","),
         "--permission-mode",
         "acceptEdits",
-        "--restricted", // no shell or file tools - the MCP tools are all it needs
+        ...(SUPPORTS_RESTRICTED ? ["--restricted"] : []),
         "--output-format",
         "json",
       ],

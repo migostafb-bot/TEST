@@ -90,6 +90,44 @@ Products are always created as drafts. `SHOPIFY_ALLOW_PUBLISH=true` lifts that,
 but leaving it off means every imported listing gets a human read before it goes
 live — worth it for regulated parapharmacy copy.
 
+## Automatic import (no API key)
+
+One command per product, or per hundred. It hands each URL to Claude Code,
+which runs the whole workflow itself — fetch, duplicate check, French
+translation, draft creation:
+
+```bash
+npm run import -- https://competitor.com/product/some-cream
+```
+
+Several at once:
+
+```bash
+npm run import -- https://a.com/p1 https://b.com/p2 https://c.com/p3
+```
+
+Or from a list — one URL per line, `#` for comments:
+
+```bash
+npm run import -- --file urls.txt
+```
+
+You get a line per product:
+
+```
+[1/3] https://competitor.com/product/some-cream
+    CREATED https://admin.shopify.com/store/n4k6ze-uf/products/123 | Crème réparatrice 40 ml
+    (38s)
+```
+
+This runs on your Claude Code subscription, so there is no API key and no
+per-product charge. It is subject to your usual usage limits. Every run is
+appended to `import-log.txt`.
+
+The automated run is allowed only three tools — fetch, duplicate check, and
+product creation — so it cannot read orders or customers, or touch anything
+else in the store. Products are still created as drafts.
+
 ## Web app (Fly.io)
 
 `web/` is a small site wrapping the same import flow: paste a competitor URL,

@@ -1,0 +1,21 @@
+{
+  "name": "shopify-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server that links a Shopify store to Claude",
+  "bin": {
+    "shopify-mcp": "src/server.mjs"
+  },
+  "scripts": {
+    "auth": "node src/auth.mjs",
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

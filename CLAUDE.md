@@ -10,8 +10,12 @@ When given a competitor product URL, run this loop:
 1. `fetch_competitor_product` with the URL.
 2. `check_duplicate` with the EAN (`barcode`) and title. If it is already
    listed, stop and say so — do not create a second listing.
-3. Translate the listing into French (see rules below).
-4. `create_product` with the French fields. It lands as a **DRAFT**.
+3. Translate the product's own fields into French — title, handle, SEO,
+   product type, tags (see rules below).
+4. `create_product` with those French fields, and **no `descriptionHtml`**. The
+   imported template renders the page sections, so the description field is
+   never shown; filling it in wastes a translation pass and leaves a second,
+   divergent copy of the page to maintain. The page copy comes from steps 5-7.
 5. `read_competitor_page` for the same URL — it returns every string from the
    page sections below the buy box.
 6. Translate that list into French. Return exactly one French string per source
@@ -33,13 +37,11 @@ When given a competitor product URL, run this loop:
 The French listing mirrors the source **faithfully**. This is a translation
 job, not a rewrite:
 
-- **Translate the whole page.** Every section, heading, bullet, table row and
-  caption in `description_html` must appear in the French `descriptionHtml`.
-  Never shorten, summarise, or drop a section because it seems repetitive or
-  marketing-heavy. The French HTML should be roughly as long as the source.
+- **Translate the whole page.** Every string returned by
+  `read_competitor_page` gets a French counterpart — every section, heading,
+  bullet, table row and caption. Never shorten, summarise, or drop one because
+  it seems repetitive or marketing-heavy.
 - Keep the same meaning, structure, order, headings, and bullet points.
-- Keep the same paragraph and list markup in `descriptionHtml`: the same
-  `<p>`, `<ul>`, `<li>`, `<h2>`, `<table>`, `<strong>` structure as the source.
 - Do not add, drop, or embellish claims.
 - Keep INCI ingredient names and dosages exactly as they appear — INCI is a
   standardised Latin nomenclature and is never translated.

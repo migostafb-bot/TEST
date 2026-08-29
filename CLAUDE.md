@@ -47,9 +47,18 @@ job, not a rewrite:
   the store's own brand from `SHOPIFY_BRAND` (including the ™ symbol if the
   value has one), spelled identically every time — headings, body, alt text,
   reviews, buttons, badges. If `SHOPIFY_BRAND` is unset, keep the source name.
-- **Localise, don't just translate.** First names in reviews and testimonials
-  become common French first names; US cities, states and references become
-  French equivalents; imperial units become metric.
+- **Localise, don't just translate.** Reviewer and testimonial names become
+  common French names — first name and initial in the same shape as the source
+  (`Patricia H.` → `Sylvie H.`, `Melissa T.` → `Céline T.`). US cities and
+  states become French cities. Imperial units become metric. A US flag emoji is
+  replaced or dropped.
+- **US regulatory and origin claims must stay true.** Never write that a product
+  is made in France, or approved by a French or EU body, when it is not. Reword
+  to something accurate that drops the country instead: "Établissements
+  certifiés aux États-Unis" → "Fabriqué dans des installations certifiées";
+  "FDA registered facility" → "Fabriqué dans un établissement enregistré".
+  Drop the US-only legal disclaimers, which have no standing in France, and say
+  in the CLAIMS line that you did.
 - **Money in French format:** `39,99 €` — comma decimal, space before the
   euro sign. Convert the competitor's currency rather than copying the number.
 - **Nothing stays in English.** Check buttons, badges, labels, `alt` text,

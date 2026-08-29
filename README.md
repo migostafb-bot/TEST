@@ -40,6 +40,26 @@ python3 shopify/cli.py check
 `check` prints the shop name and every scope the app was granted, so it
 doubles as a way to find out what the app is actually allowed to do.
 
+## Getting a token via OAuth
+
+If your app lives in the Partners dashboard (Client ID + Secret, no
+`shpat_` token of its own), run the handshake locally:
+
+```bash
+export SHOPIFY_CLIENT_ID=...
+export SHOPIFY_CLIENT_SECRET=shpss_...
+python3 shopify/oauth.py --store n4k6ze-uf --scopes read_products,read_orders
+```
+
+A browser opens for you to approve the install; the resulting `shpat_`
+token is printed once, to stdout only, and never written to disk. The
+app's **Allowed redirection URL(s)** must include
+`http://localhost:3456/callback` (use `--port` to change it).
+
+The callback is verified three ways before the code is used: HMAC
+signature, `state` nonce, and that the responding shop matches the one
+you asked for.
+
 ## Usage
 
 ```bash

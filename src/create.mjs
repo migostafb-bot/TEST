@@ -55,15 +55,19 @@ export async function createProduct(input) {
     seoTitle,
     seoDescription,
     handle,
-    status = "DRAFT",
+    status = process.env.SHOPIFY_PRODUCT_STATUS || "DRAFT",
     sourceUrl,
   } = input;
 
   if (!title?.trim()) throw new Error("title is required.");
-  if (status !== "DRAFT" && process.env.SHOPIFY_ALLOW_PUBLISH !== "true") {
+  if (
+    status !== "DRAFT" &&
+    process.env.SHOPIFY_ALLOW_PUBLISH !== "true" &&
+    process.env.SHOPIFY_PRODUCT_STATUS !== "ACTIVE"
+  ) {
     throw new Error(
-      `Refusing to create a product with status ${status}. Products are created as DRAFT for review; ` +
-        "set SHOPIFY_ALLOW_PUBLISH=true to override.",
+      `Refusing to create a product with status ${status}. Set SHOPIFY_PRODUCT_STATUS=ACTIVE ` +
+        "(or SHOPIFY_ALLOW_PUBLISH=true) to publish imported products immediately.",
     );
   }
 
@@ -146,6 +150,9 @@ export async function createProduct(input) {
     ...result,
     variant,
     admin_url: `https://admin.shopify.com/store/${process.env.SHOPIFY_STORE?.split(".")[0] ?? ""}/products/${numericId}`,
-    note: status === "DRAFT" ? "Created as a draft. Review it in Shopify admin, then publish." : undefined,
+    note:
+      status === "DRAFT"
+        ? "Created as a draft. Review it in Shopify admin, then publish."
+        : "Created ACTIVE - live on the storefront now.",
   };
 }

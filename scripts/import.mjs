@@ -57,6 +57,8 @@ function parseArgs(argv) {
   return urls;
 }
 
+const STATUS = process.env.SHOPIFY_PRODUCT_STATUS || "DRAFT";
+
 function prompt(url) {
   return [
     `Import this competitor product into the store, with its full page: ${url}`,
@@ -66,7 +68,8 @@ function prompt(url) {
     "2. check_duplicate with the EAN (barcode) and the source title. If it is already",
     "   listed, stop and report that - do not create a second listing.",
     "3. Translate the listing into French, faithfully, per the translation rules.",
-    "4. create_product with the French fields. Leave the price unset - the owner sets it.",
+    `4. create_product with the French fields and status: "${STATUS}". Leave the price`,
+    "   unset - the owner sets it.",
     "5. read_competitor_page for the same URL. It returns every string from the page",
     "   sections below the buy box.",
     "6. Translate that whole list into French, following the same rules. Return exactly",
@@ -155,4 +158,8 @@ for (const [index, url] of urls.entries()) {
 
 console.log(`Done. ${created} created, ${skipped} skipped, ${failed} failed.`);
 console.log(`Log: ${LOG}`);
-console.log("Everything lands as a draft - review and publish in Shopify admin.");
+console.log(
+  STATUS === "ACTIVE"
+    ? "Products were created ACTIVE - they are live on the storefront now."
+    : "Everything lands as a draft - review and publish in Shopify admin.",
+);

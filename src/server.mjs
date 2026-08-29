@@ -5,6 +5,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { config } from "./config.mjs";
 import { adminGraphQL, assertReadOnly } from "./shopify.mjs";
+import { fetchProduct } from "./scrape.mjs";
+import { createProduct, findExisting } from "./create.mjs";
 
 const server = new McpServer({ name: "shopify", version: "1.0.0" });
 
@@ -173,6 +175,51 @@ tool(
     assertReadOnly(query);
     return adminGraphQL(query, variables ?? {});
   },
+);
+
+
+tool(
+  "fetch_competitor_product",
+  "Fetch a competitor product page and extract its data: title, brand, EAN, price, images, " +
+    "ingredients, usage, and the full source description. Use this before create_product, then " +
+    "translate the listing into French.",
+  { url: z.string().describe("Full URL of the competitor's product page") },
+  async ({ url }) => fetchProduct(url),
+);
+
+tool(
+  "check_duplicate",
+  "Check whether a product is already listed in the store, by barcode (EAN) or exact title. " +
+    "Run this before creating to avoid duplicate listings.",
+  { barcode: z.string().optional(), title: z.string().optional() },
+  async ({ barcode, title }) => {
+    const matches = await findExisting({ barcode, title });
+    return { already_listed: matches.length > 0, matches };
+  },
+);
+
+tool(
+  "create_product",
+  "Create a product in the store from translated French listing data. Created as a DRAFT for review. " +
+    "Pass French text in title, descriptionHtml and the SEO fields.",
+  {
+    title: z.string().describe("French product title"),
+    descriptionHtml: z.string().optional().describe("French description as HTML, mirroring the source structure"),
+    vendor: z.string().optional().describe("Brand name"),
+    productType: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    price: z.string().optional().describe("Selling price in store currency"),
+    compareAtPrice: z.string().optional(),
+    sku: z.string().optional(),
+    barcode: z.string().optional().describe("EAN / GTIN"),
+    images: z.array(z.string()).optional().describe("Image URLs to attach"),
+    seoTitle: z.string().optional(),
+    seoDescription: z.string().optional(),
+    handle: z.string().optional().describe("URL slug, French, lowercase-hyphenated"),
+    sourceUrl: z.string().optional().describe("Competitor URL, recorded on the product for traceability"),
+    status: z.enum(["DRAFT", "ACTIVE"]).optional().default("DRAFT"),
+  },
+  async (args) => createProduct(args),
 );
 
 const transport = new StdioServerTransport();

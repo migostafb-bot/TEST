@@ -25,8 +25,8 @@ export async function adminGraphQL(query, variables = {}) {
 // Mutations stay off unless explicitly enabled, so a read-only link cannot
 // change store data by accident.
 export function assertReadOnly(query) {
-  if (process.env.SHOPIFY_ALLOW_MUTATIONS === "true") return;
+  if (process.env.SHOPIFY_ALLOW_MUTATIONS === "true" || process.env.SHOPIFY_ALLOW_WRITES === "true") return;
   if (/^\s*(#[^\n]*\n\s*)*mutation\b/i.test(query)) {
-    throw new Error("Mutations are disabled. Set SHOPIFY_ALLOW_MUTATIONS=true to allow writes.");
+    throw new Error("Mutations are disabled. Set SHOPIFY_ALLOW_WRITES=true to allow writes.");
   }
 }

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "auth": "node src/auth.mjs",
-    "start": "node src/server.mjs"
+    "start": "node src/server.mjs",
+    "test": "node --test \"test/**/*.test.mjs\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

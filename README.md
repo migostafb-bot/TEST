@@ -57,15 +57,44 @@ claude mcp add shopify --scope user -- node /absolute/path/to/TEST/src/server.mj
 | `list_customers` | Customer search with lifetime spend |
 | `inventory_levels` | Per-location available / on-hand / committed |
 | `admin_graphql` | Any Admin GraphQL query |
+| `fetch_competitor_product` | Extract product data from a competitor's product URL |
+| `check_duplicate` | Check if an item is already listed, by EAN or title |
+| `create_product` | Create a French listing in the store (as a draft) |
 
 `query` arguments take [Shopify search syntax](https://shopify.dev/docs/api/usage/search-syntax),
 e.g. `status:active vendor:Avene`, `financial_status:paid created_at:>2026-08-01`.
 
-## Write access
+## Listing competitor products in French
 
-Mutations through `admin_graphql` are refused by default. To allow them, set
-`SHOPIFY_ALLOW_MUTATIONS=true` in `.env` and make sure the app's granted scopes
-include the matching `write_*` permissions.
+Paste a competitor's product URL into Claude and ask it to list the product.
+It will extract the page's data, check the store for an existing listing,
+translate everything into French, and create the product as a **draft** for you
+to review and publish.
+
+The translation rules live in `CLAUDE.md` and are followed automatically: the
+French listing mirrors the source faithfully — same structure, same claims —
+with brand names and INCI ingredient names left untouched.
+
+Prices are never copied across. The competitor's price is reported as a
+reference in their currency; you decide the margin.
+
+### Enabling it
+
+Creating products needs write access, which is off by default:
+
+1. Add `write_products` to `SHOPIFY_SCOPES` in `.env` (already in the example).
+2. Set `SHOPIFY_ALLOW_WRITES=true`.
+3. Re-run `npm run auth` to get a token carrying the new scope.
+
+Products are always created as drafts. `SHOPIFY_ALLOW_PUBLISH=true` lifts that,
+but leaving it off means every imported listing gets a human read before it goes
+live — worth it for regulated parapharmacy copy.
+
+## Tests
+
+```bash
+npm test
+```
 
 ## Security notes
 

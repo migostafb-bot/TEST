@@ -108,6 +108,21 @@ export async function installPage({ page, translations, productId, templateName,
   const suffix = slugify(templateName);
   if (!suffix) throw new Error("templateName is required and must contain letters or numbers.");
 
+  // Refuse to install a half-translated page: it is the failure the shopper
+  // sees first, and it is silent otherwise.
+  const stuck = untranslatedStrings(page.texts, translations);
+  if (stuck.length) {
+    throw new Error(
+      `${stuck.length} of ${page.texts.length} strings came back unchanged in English. ` +
+        `Translate all of them and call this tool again. Still English at indices: ` +
+        stuck
+          .slice(0, 15)
+          .map((s) => `[${s.index}] ${JSON.stringify(s.text)}`)
+          .join(", ") +
+        (stuck.length > 15 ? `, and ${stuck.length - 15} more.` : ""),
+    );
+  }
+
   // Hand each section back its own slice of the translated list.
   let cursor = 0;
   const translated = page.sections
@@ -167,6 +182,41 @@ export async function findProduct(handleOrId) {
   );
   if (!data.productByIdentifier) throw new Error(`No product with handle "${handleOrId}".`);
   return data.productByIdentifier;
+}
+
+// Strings handed back unchanged are the main way a page ends up half English:
+// the counts line up, so nothing complains, but whole sections were skipped.
+// Proper nouns and numbers legitimately survive translation, so only flag text
+// that looks like English prose.
+const ENGLISH_WORDS = new RegExp(
+  "\\b(" +
+    [
+      "the,and,you,your,with,that,this,for,from,have,has,had,was,were,are,is,it,its",
+      "my,our,their,his,her,not,but,all,can,could,will,would,should,about,after,before",
+      "more,most,just,when,what,how,why,who,been,they,them,she,he,we,me,him,us,i",
+      "to,of,in,on,at,as,by,or,if,so,do,did,does,get,got,make,made,one,two,first,last",
+      "very,still,even,only,also,than,then,there,here,over,into,out,up,down,back,off",
+      "like,know,think,take,took,use,used,need,want,feel,felt,work,works,worked,keep",
+      "day,days,week,weeks,month,months,year,years,time,really,actually,every,everything",
+      "something,nothing,anything,now,without,because,while,being,other,some,any,each",
+    ].join(",").split(",").join("|") +
+    ")\\b",
+  "gi",
+);
+
+export function untranslatedStrings(sources, translations) {
+  const stuck = [];
+  for (const [index, source] of sources.entries()) {
+    const translated = translations[index];
+    if (typeof translated !== "string") continue;
+    if (translated.trim() !== source.trim()) continue;
+
+    const words = source.trim().split(/\s+/);
+    if (words.length < 3) continue; // "GoodGrove", "500 mg", "5/5" - fine as-is
+    const englishHits = (source.match(ENGLISH_WORDS) ?? []).length;
+    if (englishHits >= 2) stuck.push({ index, text: source.slice(0, 80) });
+  }
+  return stuck;
 }
 
 // A last check before delivery: obvious English that slipped through. Reported

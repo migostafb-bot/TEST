@@ -12,7 +12,8 @@
     "start": "node src/server.mjs",
     "test": "node --test \"test/**/*.test.mjs\"",
     "web": "node web/server.mjs",
-    "import": "node scripts/import.mjs"
+    "import": "node scripts/import.mjs",
+    "inspect": "node scripts/inspect.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

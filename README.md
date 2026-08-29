@@ -1,7 +1,8 @@
 # TEST
 
-Tools for working with the City Pharma Shopify store (`city-pharma-2`) through
-an existing custom (dev) app's Admin API.
+Tools for working with a Shopify store through a custom app's Admin API.
+The target store is set by `SHOPIFY_STORE`, so the same tools work against
+any store the app is installed on.
 
 ## Setup
 
@@ -16,7 +17,7 @@ an existing custom (dev) app's Admin API.
 3. Export the credentials:
 
    ```bash
-   export SHOPIFY_STORE=city-pharma-2
+   export SHOPIFY_STORE=your-store-handle
    export SHOPIFY_ADMIN_TOKEN=shpat_...
    ```
 
@@ -59,4 +60,4 @@ This repository's Claude Code environment blocks outbound connections to
 `*.myshopify.com` (the agent proxy answers `403` to `CONNECT`). The tools here
 therefore cannot reach the store from inside a Claude Code web session — run
 them from your own machine or CI, or have the environment's network policy
-updated to allow `city-pharma-2.myshopify.com` before running them here.
+updated to allow the store's `*.myshopify.com` domain before running them here.

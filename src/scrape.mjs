@@ -191,6 +191,64 @@ export function extractProduct(html, sourceUrl) {
   };
 }
 
+// Storefronts running Shopify expose the complete product record at
+// <product-url>.json - the full body_html, every image and every variant,
+// rather than the truncated summary that meta tags carry.
+export async function fetchShopifyProduct(target) {
+  if (!/\/products\/[^/]+$/.test(target.pathname)) return null;
+  try {
+    const response = await fetch(`${target.origin}${target.pathname}.json`, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    return body?.product?.title ? body.product : null;
+  } catch {
+    return null; // not a Shopify store, or the endpoint is disabled
+  }
+}
+
+function mergeShopify(product, shopify, sourceUrl) {
+  if (!shopify) return product;
+  const variant = shopify.variants?.[0] ?? {};
+  const images = (shopify.images ?? [])
+    .map((image) => image.src)
+    .filter(Boolean)
+    .map((src) => new URL(src, sourceUrl).href);
+
+  return {
+    ...product,
+    title: shopify.title || product.title,
+    brand: shopify.vendor || product.brand,
+    category: shopify.product_type || product.category,
+    sku: variant.sku || product.sku,
+    ean: variant.barcode || product.ean,
+    reference_price: variant.price ?? product.reference_price,
+    // body_html is the complete description, including every section the
+    // competitor wrote - this is what the French listing must mirror.
+    description_html: shopify.body_html || product.description_html,
+    description_text: htmlToText(shopify.body_html) || product.description_text,
+    images: images.length ? images : product.images,
+    source_tags: shopify.tags
+      ? String(shopify.tags).split(",").map((t) => t.trim()).filter(Boolean)
+      : undefined,
+    variants: (shopify.variants ?? []).map((v) => ({
+      title: v.title,
+      sku: v.sku,
+      barcode: v.barcode,
+      price: v.price,
+      option: v.option1,
+    })),
+    extraction: {
+      ...product.extraction,
+      shopify_json: true,
+      description_length: (shopify.body_html ?? "").length,
+    },
+  };
+}
+
 export async function fetchProduct(url) {
   let target;
   try {
@@ -208,5 +266,8 @@ export async function fetchProduct(url) {
   if (!response.ok) throw new Error(`Fetch failed (${response.status} ${response.statusText}) for ${target.href}`);
 
   const html = await response.text();
-  return extractProduct(html, response.url || target.href);
+  const sourceUrl = response.url || target.href;
+  const product = extractProduct(html, sourceUrl);
+  const shopify = await fetchShopifyProduct(new URL(sourceUrl));
+  return mergeShopify(product, shopify, sourceUrl);
 }

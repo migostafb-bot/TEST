@@ -20,8 +20,13 @@ When given a competitor product URL, run this loop:
 The French listing mirrors the source **faithfully**. This is a translation
 job, not a rewrite:
 
+- **Translate the whole page.** Every section, heading, bullet, table row and
+  caption in `description_html` must appear in the French `descriptionHtml`.
+  Never shorten, summarise, or drop a section because it seems repetitive or
+  marketing-heavy. The French HTML should be roughly as long as the source.
 - Keep the same meaning, structure, order, headings, and bullet points.
-- Keep the same paragraph and list markup in `descriptionHtml`.
+- Keep the same paragraph and list markup in `descriptionHtml`: the same
+  `<p>`, `<ul>`, `<li>`, `<h2>`, `<table>`, `<strong>` structure as the source.
 - Do not add, drop, or embellish claims.
 - Keep brand names, INCI ingredient names, product line names and dosages
   exactly as they appear — INCI is a standardised Latin nomenclature and is

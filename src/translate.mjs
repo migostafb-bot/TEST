@@ -28,6 +28,7 @@ const ListingSchema = z.object({
 const SYSTEM = `You translate parapharmacy product listings from any language into French for a French online parapharmacy (parapharmafr.shop).
 
 This is a TRANSLATION, not a rewrite. The French listing must mirror the source faithfully:
+- TRANSLATE THE WHOLE THING. Every section, heading, bullet, table row and caption in description_html must appear in the French descriptionHtml. Never shorten, summarise, or skip a section because it looks repetitive or marketing-heavy. Your French HTML should be roughly as long as the source HTML.
 - Keep the same meaning, structure, order, headings and bullet points.
 - Keep the same HTML markup: same <p>, <ul>, <li>, <h2>, <strong> structure as the source.
 - Do not add, drop, embellish or soften any claim.
@@ -50,6 +51,8 @@ export async function translateListing(product) {
     ean: product.ean,
     category: product.category,
     description_html: product.description_html,
+    variants: product.variants,
+    source_tags: product.source_tags,
     ingredients: product.ingredients,
     usage: product.usage,
     source_url: product.source_url,

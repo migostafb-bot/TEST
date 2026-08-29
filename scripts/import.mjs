@@ -10,6 +10,7 @@ import { spawn, execFileSync } from "node:child_process";
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import "../src/config.mjs"; // loads .env, so SHOPIFY_PRODUCT_STATUS is honoured here too
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LOG = resolve(ROOT, "import-log.txt");

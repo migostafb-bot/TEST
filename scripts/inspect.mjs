@@ -36,14 +36,18 @@ for (const section of sections) {
   console.log(`    ${texts.length} strings, ${(section.html.length / 1024) | 0} KB`);
   console.log(`    e.g. ${JSON.stringify(sample.slice(0, 70))}`);
 
-  // Text held in JSON or scripts is invisible to the translator: whatever
-  // renders it will put the original language back on the page.
+  // Text held in scripts only reaches the translator if the JSON inside can be
+  // parsed. Say plainly which scripts were read and which were not.
   const scripts = [...section.html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  const scriptText = scripts.join("").length;
-  if (scriptText > 500) {
-    console.log(`    WARNING: ${(scriptText / 1024) | 0} KB inside <script> - not translatable`);
-    const jsonish = scripts.find((s) => /"[a-z_]+"\s*:\s*"/i.test(s));
-    if (jsonish) console.log(`    Looks like JSON-driven content (a reviews or bundle widget).`);
+  for (const body of scripts) {
+    if (body.trim().length < 500) continue;
+    const { texts: fromScript } = extractTexts(`<script>${body}</script>`);
+    if (fromScript.length) {
+      console.log(`    script (${(body.length / 1024) | 0} KB): ${fromScript.length} strings READ`);
+    } else {
+      console.log(`    script (${(body.length / 1024) | 0} KB): NOT READ - text here stays English`);
+      console.log(`      starts: ${JSON.stringify(body.trim().slice(0, 120))}`);
+    }
   }
   console.log();
 }

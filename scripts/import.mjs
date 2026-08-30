@@ -24,6 +24,7 @@ const ALLOWED = [
   "mcp__shopify__read_competitor_page",
   "mcp__shopify__install_product_page",
   "mcp__shopify__compute_price",
+  "mcp__shopify__delete_product",
 ];
 
 // --restricted drops the shell and file tools, but only exists in newer Claude
@@ -39,6 +40,8 @@ const SUPPORTS_RESTRICTED = (() => {
   }
 })();
 
+let replace = false;
+
 function parseArgs(argv) {
   const urls = [];
   for (let i = 0; i < argv.length; i += 1) {
@@ -50,6 +53,8 @@ function parseArgs(argv) {
         const trimmed = line.trim();
         if (trimmed && !trimmed.startsWith("#")) urls.push(trimmed);
       }
+    } else if (argv[i] === "--replace") {
+      replace = true;
     } else if (argv[i].startsWith("http")) {
       urls.push(argv[i]);
     } else {
@@ -68,8 +73,15 @@ function prompt(url) {
     "",
     "Follow the listing workflow in CLAUDE.md exactly:",
     "1. fetch_competitor_product for the URL.",
-    "2. check_duplicate with the EAN (barcode) and the source title. If it is already",
-    "   listed, stop and report that - do not create a second listing.",
+    ...(replace
+      ? [
+          "2. check_duplicate with the EAN (barcode) and the source title. If it is already",
+          "   listed, delete_product that product, then carry on and import it fresh.",
+        ]
+      : [
+          "2. check_duplicate with the EAN (barcode) and the source title. If it is already",
+          "   listed, stop and report that - do not create a second listing.",
+        ]),
     "3. Translate only the product's own fields into French: title, handle, SEO title,",
     "   SEO description, product type, tags.",
     "4. compute_price with the competitor's reference_price and reference_currency to get",
@@ -150,7 +162,10 @@ function runClaude(url) {
 
 const urls = parseArgs(process.argv.slice(2));
 if (!urls.length) {
-  console.error("Usage: npm run import -- <url> [url...]   |   npm run import -- --file urls.txt");
+  console.error(
+    "Usage: npm run import -- <url> [url...]   |   npm run import -- --file urls.txt\n" +
+      "       --replace deletes and re-imports a product that already exists",
+  );
   process.exit(1);
 }
 

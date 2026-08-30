@@ -6,7 +6,7 @@ import { z } from "zod";
 import { config } from "./config.mjs";
 import { adminGraphQL, assertReadOnly } from "./shopify.mjs";
 import { fetchProduct } from "./scrape.mjs";
-import { createProduct, findExisting } from "./create.mjs";
+import { createProduct, findExisting, deleteProduct } from "./create.mjs";
 import { readPage, installPage, findProduct } from "./clone.mjs";
 import { computePrice } from "./pricing.mjs";
 
@@ -288,6 +288,17 @@ tool(
     currency: z.string().describe("The competitor's currency, e.g. \"USD\""),
   },
   async ({ reference_price, currency }) => computePrice(reference_price, currency),
+);
+
+tool(
+  "delete_product",
+  "Permanently delete a product from the store. Used when re-importing a listing that already " +
+    "exists. There is no undo.",
+  { product: z.string().describe("Product handle, numeric id, or gid") },
+  async ({ product }) => {
+    const target = await findProduct(product);
+    return deleteProduct(target.id);
+  },
 );
 
 const transport = new StdioServerTransport();

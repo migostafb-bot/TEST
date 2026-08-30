@@ -164,3 +164,20 @@ export async function createProduct(input) {
         : "Created ACTIVE - live on the storefront now.",
   };
 }
+
+// Removing a product also removes its variants and images, so this is only
+// reachable from an explicit --replace run.
+export async function deleteProduct(productId) {
+  assertWritesAllowed();
+  const data = await adminGraphQL(
+    `mutation($input: ProductDeleteInput!) {
+      productDelete(input: $input) { deletedProductId userErrors { field message } }
+    }`,
+    { input: { id: productId } },
+  );
+  const errors = data.productDelete.userErrors;
+  if (errors?.length) {
+    throw new Error(`Could not delete: ${errors.map((e) => `${e.field}: ${e.message}`).join("; ")}`);
+  }
+  return { deleted: data.productDelete.deletedProductId };
+}

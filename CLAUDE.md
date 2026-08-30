@@ -75,9 +75,11 @@ job, not a rewrite:
 
 ## Pricing
 
-Never copy the competitor's price straight across. `reference_price` is the
-competitor's price in **their** currency. Surface it, convert it, and ask
-what margin to apply, unless the user has already given a rule.
+Never copy the competitor's price across. Call `compute_price` with the
+competitor's `reference_price` and `reference_currency`; it applies the store's
+rule from `.env` — exchange rate, `SHOPIFY_MARGIN_PERCENT`, and the price
+ending — and returns the euro price to pass to `create_product`. Do the
+arithmetic with that tool, never by hand.
 
 ## Safety rails
 

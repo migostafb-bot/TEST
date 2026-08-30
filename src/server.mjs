@@ -8,6 +8,7 @@ import { adminGraphQL, assertReadOnly } from "./shopify.mjs";
 import { fetchProduct } from "./scrape.mjs";
 import { createProduct, findExisting } from "./create.mjs";
 import { readPage, installPage, findProduct } from "./clone.mjs";
+import { computePrice } from "./pricing.mjs";
 
 const server = new McpServer({ name: "shopify", version: "1.0.0" });
 
@@ -276,6 +277,17 @@ tool(
       themeName: themeName ?? process.env.SHOPIFY_THEME,
     });
   },
+);
+
+tool(
+  "compute_price",
+  "Convert the competitor's price into this store's selling price using the rule in .env " +
+    "(exchange rate, margin, price ending). Use this instead of doing the arithmetic yourself.",
+  {
+    reference_price: z.string().describe("The competitor's price, e.g. \"49.99\""),
+    currency: z.string().describe("The competitor's currency, e.g. \"USD\""),
+  },
+  async ({ reference_price, currency }) => computePrice(reference_price, currency),
 );
 
 const transport = new StdioServerTransport();

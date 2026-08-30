@@ -23,6 +23,7 @@ const ALLOWED = [
   "mcp__shopify__create_product",
   "mcp__shopify__read_competitor_page",
   "mcp__shopify__install_product_page",
+  "mcp__shopify__compute_price",
 ];
 
 // --restricted drops the shell and file tools, but only exists in newer Claude
@@ -71,9 +72,10 @@ function prompt(url) {
     "   listed, stop and report that - do not create a second listing.",
     "3. Translate only the product's own fields into French: title, handle, SEO title,",
     "   SEO description, product type, tags.",
-    `4. create_product with those French fields and status: "${STATUS}". Do NOT pass`,
-    "   descriptionHtml - the imported template renders the page, so the description",
-    "   field is never shown. Leave the price unset - the owner sets it.",
+    "4. compute_price with the competitor's reference_price and reference_currency to get",
+    "   this store's price. Then create_product with those French fields, that price, and",
+    `   status: "${STATUS}". Do NOT pass descriptionHtml - the imported template renders`,
+    "   the page, so the description field is never shown.",
     "5. read_competitor_page for the same URL. It returns every string from the page",
     "   sections below the buy box.",
     "6. Translate that whole list into French, following the same rules. Return exactly",

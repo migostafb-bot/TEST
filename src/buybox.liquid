@@ -1,0 +1,179 @@
+{%- comment -%}
+  Buy box: bundle selector, add-to-cart, delivery estimate, payment badges.
+  Static - it reads the product's own variants at render time, so the same file
+  serves every imported product and needs no translation.
+{%- endcomment -%}
+
+<div class="pf-buybox" id="pf-buybox-{{ section.id }}">
+  {%- if section.settings.heading != blank -%}
+    <h2 class="pf-buybox__heading">{{ section.settings.heading }}</h2>
+  {%- endif -%}
+
+  <form method="post" action="{{ routes.cart_add_url }}" id="pf-form-{{ section.id }}">
+    <input type="hidden" name="form_type" value="product">
+    <input type="hidden" name="utf8" value="✓">
+    <input type="hidden" name="quantity" value="1">
+    <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}" data-pf-variant>
+
+    <div class="pf-offers" role="radiogroup" aria-label="{{ section.settings.heading | escape }}">
+      {%- for variant in product.variants -%}
+        {%- assign is_default = false -%}
+        {%- if product.variants.size > 1 and forloop.index == 2 -%}{%- assign is_default = true -%}{%- endif -%}
+        {%- if product.variants.size == 1 and forloop.first -%}{%- assign is_default = true -%}{%- endif -%}
+
+        <label class="pf-offer{% if is_default %} pf-offer--on{% endif %}"
+               data-pf-offer
+               data-variant="{{ variant.id }}"
+               data-price="{{ variant.price | money }}">
+          <input type="radio" name="pf-offer-{{ section.id }}" value="{{ variant.id }}"
+                 {% if is_default %}checked{% endif %} {% unless variant.available %}disabled{% endunless %}>
+          <span class="pf-offer__dot" aria-hidden="true"></span>
+
+          {%- if variant.image or product.featured_image -%}
+            <img class="pf-offer__img"
+                 src="{{ variant.image | default: product.featured_image | image_url: width: 160 }}"
+                 alt="{{ variant.title | escape }}" loading="lazy" width="56" height="56">
+          {%- endif -%}
+
+          <span class="pf-offer__name">{{ variant.title }}</span>
+
+          {%- if product.variants.size > 1 -%}
+            {%- if forloop.index == 2 -%}
+              <span class="pf-offer__tag">{{ section.settings.tag_popular }}</span>
+            {%- elsif forloop.last -%}
+              <span class="pf-offer__tag pf-offer__tag--best">{{ section.settings.tag_best }}</span>
+            {%- endif -%}
+          {%- endif -%}
+
+          <span class="pf-offer__prices">
+            <span class="pf-offer__price">{{ variant.price | money }}</span>
+            {%- if variant.compare_at_price > variant.price -%}
+              <s class="pf-offer__was">{{ variant.compare_at_price | money }}</s>
+            {%- endif -%}
+          </span>
+        </label>
+      {%- endfor -%}
+    </div>
+
+    <button type="submit" class="pf-atc" {% unless product.available %}disabled{% endunless %}>
+      {%- if product.available -%}
+        {{ section.settings.cta }} – <span data-pf-total>{{ product.selected_or_first_available_variant.price | money }}</span>
+      {%- else -%}
+        {{ section.settings.sold_out }}
+      {%- endif -%}
+    </button>
+  </form>
+
+  {%- if section.settings.show_delivery -%}
+    <p class="pf-delivery">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <path d="M1 3h13v13H1zM14 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2"/><circle cx="17.5" cy="18.5" r="2"/>
+      </svg>
+      <span>{{ section.settings.delivery_label }} <strong data-pf-from></strong> {{ section.settings.delivery_and }} <strong data-pf-to></strong>.</span>
+    </p>
+  {%- endif -%}
+
+  {%- if section.settings.show_payment_icons -%}
+    <div class="pf-pay" aria-label="{{ section.settings.payment_label | escape }}">
+      {%- for type in shop.enabled_payment_types -%}
+        {{ type | payment_type_svg_tag: class: 'pf-pay__icon' }}
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+</div>
+
+<style>
+  #pf-buybox-{{ section.id }} { --pf-ink: #16281f; --pf-line: #e2e6e4; --pf-on: #16281f; --pf-muted: #6d7a74; }
+  .pf-buybox { max-width: 620px; margin: 0 auto; font-family: inherit; color: var(--pf-ink); }
+  .pf-buybox__heading { text-align: center; font-size: clamp(1.25rem, 3vw, 1.75rem); margin: 0 0 1.25rem; }
+  .pf-offers { display: grid; gap: .75rem; }
+  .pf-offer {
+    position: relative; display: grid; align-items: center; gap: .75rem; cursor: pointer;
+    grid-template-columns: auto auto 1fr auto; padding: .9rem 1rem;
+    border: 1.5px solid var(--pf-line); border-radius: 14px; background: #fff; transition: border-color .15s, box-shadow .15s;
+  }
+  .pf-offer--on { border-color: var(--pf-on); border-width: 2.5px; box-shadow: 0 1px 0 rgba(0,0,0,.02); }
+  .pf-offer input { position: absolute; opacity: 0; pointer-events: none; }
+  .pf-offer__dot { width: 20px; height: 20px; border: 2px solid var(--pf-line); border-radius: 50%; display: block; }
+  .pf-offer--on .pf-offer__dot { border-color: var(--pf-on); box-shadow: inset 0 0 0 4px #fff, inset 0 0 0 12px var(--pf-on); }
+  .pf-offer__img { width: 56px; height: 56px; object-fit: contain; }
+  .pf-offer__name { font-weight: 700; font-size: 1.05rem; }
+  .pf-offer__prices { text-align: right; display: grid; }
+  .pf-offer__price { font-weight: 800; font-size: 1.2rem; }
+  .pf-offer__was { color: var(--pf-muted); font-size: .95rem; }
+  .pf-offer__tag {
+    position: absolute; top: -.7rem; right: 1rem; background: var(--pf-on); color: #fff;
+    font-size: .75rem; font-weight: 700; padding: .25rem .6rem; border-radius: 999px; white-space: nowrap;
+  }
+  .pf-atc {
+    width: 100%; margin-top: 1.1rem; padding: 1.1rem 1rem; border: 0; border-radius: 12px;
+    background: var(--pf-on); color: #fff; font-size: 1.05rem; font-weight: 800; letter-spacing: .02em; cursor: pointer;
+  }
+  .pf-atc[disabled] { opacity: .5; cursor: not-allowed; }
+  .pf-delivery { display: flex; gap: .6rem; align-items: flex-start; margin: 1.1rem 0 0; font-size: .95rem; }
+  .pf-delivery svg { width: 26px; height: 26px; flex: none; }
+  .pf-pay { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; }
+  .pf-pay .pf-pay__icon { height: 24px; width: auto; }
+  @media (max-width: 640px) {
+    .pf-offer { grid-template-columns: auto auto 1fr; row-gap: .35rem; padding: .8rem .85rem; }
+    .pf-offer__prices { grid-column: 1 / -1; text-align: left; display: flex; gap: .5rem; align-items: baseline; }
+    .pf-offer__name { font-size: 1rem; }
+  }
+</style>
+
+<script>
+  (function () {
+    var root = document.getElementById("pf-buybox-{{ section.id }}");
+    if (!root) return;
+
+    var hidden = root.querySelector("[data-pf-variant]");
+    var total = root.querySelector("[data-pf-total]");
+
+    root.addEventListener("change", function (event) {
+      var input = event.target.closest('input[type="radio"]');
+      if (!input) return;
+      var offer = input.closest("[data-pf-offer]");
+      root.querySelectorAll("[data-pf-offer]").forEach(function (el) {
+        el.classList.toggle("pf-offer--on", el === offer);
+      });
+      if (hidden) hidden.value = input.value;
+      if (total && offer) total.textContent = offer.dataset.price;
+    });
+
+    // Delivery window, in the shopper's own language and date format.
+    var from = root.querySelector("[data-pf-from]");
+    var to = root.querySelector("[data-pf-to]");
+    if (from && to) {
+      var fmt = new Intl.DateTimeFormat("{{ request.locale.iso_code | default: 'fr-FR' }}", {
+        weekday: "long", day: "numeric", month: "long",
+      });
+      var start = new Date();
+      var end = new Date();
+      start.setDate(start.getDate() + {{ section.settings.delivery_min | default: 4 }});
+      end.setDate(end.getDate() + {{ section.settings.delivery_max | default: 7 }});
+      from.textContent = fmt.format(start);
+      to.textContent = fmt.format(end);
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Buy box",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Achetez plus, payez moins" },
+    { "type": "text", "id": "cta", "label": "Button", "default": "AJOUTER AU PANIER" },
+    { "type": "text", "id": "sold_out", "label": "Sold out", "default": "RUPTURE DE STOCK" },
+    { "type": "text", "id": "tag_popular", "label": "Popular tag", "default": "Le plus populaire" },
+    { "type": "text", "id": "tag_best", "label": "Best tag", "default": "Meilleure offre" },
+    { "type": "checkbox", "id": "show_delivery", "label": "Show delivery estimate", "default": true },
+    { "type": "text", "id": "delivery_label", "label": "Delivery text", "default": "Livraison estimée entre" },
+    { "type": "text", "id": "delivery_and", "label": "Delivery joiner", "default": "et" },
+    { "type": "range", "id": "delivery_min", "label": "Earliest (days)", "min": 1, "max": 20, "step": 1, "default": 4 },
+    { "type": "range", "id": "delivery_max", "label": "Latest (days)", "min": 2, "max": 30, "step": 1, "default": 7 },
+    { "type": "checkbox", "id": "show_payment_icons", "label": "Show payment icons", "default": true },
+    { "type": "text", "id": "payment_label", "label": "Payment icons label", "default": "Moyens de paiement acceptés" }
+  ],
+  "presets": [{ "name": "Buy box" }]
+}
+{% endschema %}

@@ -57,6 +57,7 @@ export async function createProduct(input) {
     handle,
     status = process.env.SHOPIFY_PRODUCT_STATUS || "DRAFT",
     sourceUrl,
+    bundles = [],
   } = input;
 
   if (!title?.trim()) throw new Error("title is required.");
@@ -79,9 +80,16 @@ export async function createProduct(input) {
     );
   }
 
+  // Bundle tiers become real variants: adding quantity to the cart would
+  // charge unit price times quantity, not the tier price the page advertises.
+  const tiers = bundles.filter((b) => b?.title && Number(b.price) > 0);
+
   const product = {
     title: title.trim(),
     status,
+    ...(tiers.length > 1
+      ? { productOptions: [{ name: "Format", values: tiers.map((t) => ({ name: t.title })) }] }
+      : {}),
     ...(descriptionHtml ? { descriptionHtml } : {}),
     ...(vendor ? { vendor } : {}),
     ...(productType ? { productType } : {}),
@@ -121,6 +129,39 @@ export async function createProduct(input) {
   const result = created.productCreate.product;
   const variantId = result.variants.nodes[0]?.id;
   let variant = null;
+
+  if (tiers.length > 1) {
+    const bulk = await adminGraphQL(
+      `mutation($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+        productVariantsBulkCreate(productId: $productId, variants: $variants, strategy: REMOVE_STANDALONE_VARIANT) {
+          productVariants { id title price compareAtPrice }
+          userErrors { field message }
+        }
+      }`,
+      {
+        productId: result.id,
+        variants: tiers.map((tier) => ({
+          price: String(tier.price),
+          ...(tier.compareAtPrice ? { compareAtPrice: String(tier.compareAtPrice) } : {}),
+          optionValues: [{ optionName: "Format", name: tier.title }],
+        })),
+      },
+    );
+    const bulkErrors = bulk.productVariantsBulkCreate.userErrors;
+    if (bulkErrors?.length) {
+      throw new Error(
+        `Product created (${result.handle}) but bundle variants failed: ` +
+          bulkErrors.map((e) => `${e.field}: ${e.message}`).join("; "),
+      );
+    }
+    const numeric = result.id.split("/").pop();
+    return {
+      ...result,
+      variants: bulk.productVariantsBulkCreate.productVariants,
+      admin_url: `https://admin.shopify.com/store/${process.env.SHOPIFY_STORE?.split(".")[0] ?? ""}/products/${numeric}`,
+      note: status === "DRAFT" ? "Created as a draft." : "Created ACTIVE - live on the storefront now.",
+    };
+  }
 
   if (variantId && (price || compareAtPrice || sku || barcode)) {
     const updated = await adminGraphQL(

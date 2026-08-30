@@ -220,6 +220,10 @@ tool(
     handle: z.string().optional().describe("URL slug, French, lowercase-hyphenated"),
     sourceUrl: z.string().optional().describe("Competitor URL, recorded on the product for traceability"),
     status: z.enum(["DRAFT", "ACTIVE"]).optional().default("DRAFT"),
+    bundles: z
+      .array(z.object({ title: z.string(), price: z.string(), compareAtPrice: z.string().optional() }))
+      .optional()
+      .describe('Bundle tiers as real variants, e.g. [{title:"1 flacon",price:"64.90"},{title:"2 flacons",price:"103.90"}]'),
   },
   async (args) => createProduct(args),
 );

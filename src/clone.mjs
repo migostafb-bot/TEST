@@ -14,6 +14,14 @@ import {
 import { extractTexts, applyTexts } from "./textnodes.mjs";
 import { findTheme, readThemeFile, writeThemeFiles, setProductTemplate, buildSectionLiquid, buildProductTemplate } from "./theme.mjs";
 import { adminGraphQL } from "./shopify.mjs";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+// Static Liquid: it reads the product's own variants at render time, so the
+// same file serves every import and never needs translating.
+const BUY_BOX = readFileSync(resolve(HERE, "buybox.liquid"), "utf8");
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -144,13 +152,14 @@ export async function installPage({ page, translations, productId, templateName,
   const defaultTemplate = await readThemeFile(theme.id, "templates/product.json");
 
   const written = await writeThemeFiles(theme.id, [
+    { filename: "sections/pf-buybox.liquid", content: BUY_BOX },
     {
       filename: sectionFile,
       content: buildSectionLiquid({ sectionName: templateName, scope, html, css, script: ctaScript() }),
     },
     {
       filename: templateFile,
-      content: buildProductTemplate(defaultTemplate, sectionFile),
+      content: buildProductTemplate(defaultTemplate, sectionFile, "pf-buybox"),
     },
   ]);
 

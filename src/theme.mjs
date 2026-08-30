@@ -114,7 +114,7 @@ export function buildSectionLiquid({ sectionName, scope, html, css, script = "" 
 // Builds templates/product.<suffix>.json by taking the theme's default product
 // template and appending the imported section, so the buy box, gallery and
 // everything else the theme already does is preserved.
-export function buildProductTemplate(defaultTemplateJson, sectionFileName) {
+export function buildProductTemplate(defaultTemplateJson, sectionFileName, buyBoxKey) {
   const key = sectionFileName.replace(/^sections\//, "").replace(/\.liquid$/, "");
   let template;
 
@@ -124,17 +124,31 @@ export function buildProductTemplate(defaultTemplateJson, sectionFileName) {
     template = null;
   }
 
+  const extra = {};
+  if (buyBoxKey) extra[buyBoxKey] = { type: buyBoxKey };
+  extra[key] = { type: key };
+
   if (!template?.sections) {
     // No usable default - a minimal template that still renders the product.
     return JSON.stringify(
-      { sections: { main: { type: "main-product" }, [key]: { type: key } }, order: ["main", key] },
+      { sections: { main: { type: "main-product" }, ...extra }, order: ["main", ...Object.keys(extra)] },
       null,
       2,
     );
   }
 
-  template.sections = { ...template.sections, [key]: { type: key } };
-  template.order = [...(template.order ?? Object.keys(template.sections)).filter((o) => o !== key), key];
+  template.sections = { ...template.sections, ...extra };
+  const added = Object.keys(extra);
+  const order = (template.order ?? Object.keys(template.sections)).filter((o) => !added.includes(o));
+  // The buy box belongs directly under the theme's product section; the
+  // imported page content follows it.
+  const mainAt = order.findIndex((o) => /^main/.test(o));
+  if (buyBoxKey && mainAt !== -1) {
+    order.splice(mainAt + 1, 0, buyBoxKey);
+    template.order = [...order, key];
+  } else {
+    template.order = [...order, ...added];
+  }
   return JSON.stringify(template, null, 2);
 }
 

@@ -80,16 +80,11 @@ export async function createProduct(input) {
     );
   }
 
-  // Bundle tiers become real variants: adding quantity to the cart would
-  // charge unit price times quantity, not the tier price the page advertises.
-  const tiers = bundles.filter((b) => b?.title && Number(b.price) > 0);
+  const tiers = bundles.filter((b) => Number(b?.price) > 0);
 
   const product = {
     title: title.trim(),
     status,
-    ...(tiers.length > 1
-      ? { productOptions: [{ name: "Format", values: tiers.map((t) => ({ name: t.title })) }] }
-      : {}),
     ...(descriptionHtml ? { descriptionHtml } : {}),
     ...(vendor ? { vendor } : {}),
     ...(productType ? { productType } : {}),
@@ -130,39 +125,6 @@ export async function createProduct(input) {
   const variantId = result.variants.nodes[0]?.id;
   let variant = null;
 
-  if (tiers.length > 1) {
-    const bulk = await adminGraphQL(
-      `mutation($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-        productVariantsBulkCreate(productId: $productId, variants: $variants, strategy: REMOVE_STANDALONE_VARIANT) {
-          productVariants { id title price compareAtPrice }
-          userErrors { field message }
-        }
-      }`,
-      {
-        productId: result.id,
-        variants: tiers.map((tier) => ({
-          price: String(tier.price),
-          ...(tier.compareAtPrice ? { compareAtPrice: String(tier.compareAtPrice) } : {}),
-          optionValues: [{ optionName: "Format", name: tier.title }],
-        })),
-      },
-    );
-    const bulkErrors = bulk.productVariantsBulkCreate.userErrors;
-    if (bulkErrors?.length) {
-      throw new Error(
-        `Product created (${result.handle}) but bundle variants failed: ` +
-          bulkErrors.map((e) => `${e.field}: ${e.message}`).join("; "),
-      );
-    }
-    const numeric = result.id.split("/").pop();
-    return {
-      ...result,
-      variants: bulk.productVariantsBulkCreate.productVariants,
-      admin_url: `https://admin.shopify.com/store/${process.env.SHOPIFY_STORE?.split(".")[0] ?? ""}/products/${numeric}`,
-      note: status === "DRAFT" ? "Created as a draft." : "Created ACTIVE - live on the storefront now.",
-    };
-  }
-
   if (variantId && (price || compareAtPrice || sku || barcode)) {
     const updated = await adminGraphQL(
       `mutation($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
@@ -179,7 +141,9 @@ export async function createProduct(input) {
             ...(price ? { price: String(price) } : {}),
             ...(compareAtPrice ? { compareAtPrice: String(compareAtPrice) } : {}),
             ...(barcode ? { barcode: String(barcode) } : {}),
-            ...(sku ? { inventoryItem: { sku: String(sku) } } : {}),
+            // Untracked: these are dropshipped, and a tracked variant at zero
+            // stock renders the buy button as sold out.
+            inventoryItem: { tracked: false, ...(sku ? { sku: String(sku) } : {}) },
           },
         ],
       },
@@ -194,10 +158,16 @@ export async function createProduct(input) {
     variant = updated.productVariantsBulkUpdate.productVariants[0];
   }
 
+  // Tier prices are delivered as automatic quantity discounts on this product,
+  // so the theme's own bundle selector adds quantity and the cart total lands
+  // on the advertised price. Variants would give the shopper a second selector.
+  const discounts = tiers.length > 1 ? await createTierDiscounts(result, tiers) : [];
+
   const numericId = result.id.split("/").pop();
   return {
     ...result,
     variant,
+    discounts,
     admin_url: `https://admin.shopify.com/store/${process.env.SHOPIFY_STORE?.split(".")[0] ?? ""}/products/${numericId}`,
     note:
       status === "DRAFT"
@@ -221,4 +191,58 @@ export async function deleteProduct(productId) {
     throw new Error(`Could not delete: ${errors.map((e) => `${e.field}: ${e.message}`).join("; ")}`);
   }
   return { deleted: data.productDelete.deletedProductId };
+}
+
+// One automatic discount per tier above the first: at a qualifying quantity
+// Shopify applies the largest matching one, so tier 3 wins over tier 2.
+async function createTierDiscounts(product, tiers) {
+  const unit = Number(tiers[0].price);
+  const created = [];
+
+  for (const [index, tier] of tiers.entries()) {
+    const quantity = index + 1;
+    if (quantity < 2) continue;
+
+    const full = unit * quantity;
+    const target = Number(tier.price);
+    const percentage = Math.round(((full - target) / full) * 10000) / 10000;
+    if (!(percentage > 0)) continue;
+
+    const data = await adminGraphQL(
+      `mutation($discount: DiscountAutomaticBasicInput!) {
+        discountAutomaticBasicCreate(automaticBasicDiscount: $discount) {
+          automaticDiscountNode { id }
+          userErrors { field message }
+        }
+      }`,
+      {
+        discount: {
+          title: `${product.handle} — ${quantity} pour ${target.toFixed(2).replace(".", ",")} €`,
+          startsAt: new Date().toISOString(),
+          minimumRequirement: { quantity: { greaterThanOrEqualToQuantity: String(quantity) } },
+          customerGets: {
+            value: { percentage },
+            // Scoped to this product only: a store-wide percentage would
+            // discount the whole catalogue.
+            items: { products: { productsToAdd: [product.id] } },
+          },
+        },
+      },
+    );
+
+    const errors = data.discountAutomaticBasicCreate.userErrors;
+    if (errors?.length) {
+      throw new Error(
+        `Product created (${product.handle}) but its ${quantity}-unit discount failed: ` +
+          errors.map((e) => `${e.field}: ${e.message}`).join("; "),
+      );
+    }
+    created.push({
+      quantity,
+      price: target.toFixed(2),
+      percent_off: Math.round(percentage * 1000) / 10,
+      id: data.discountAutomaticBasicCreate.automaticDiscountNode.id,
+    });
+  }
+  return created;
 }

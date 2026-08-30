@@ -212,9 +212,11 @@ export function untranslatedStrings(sources, translations) {
     if (translated.trim() !== source.trim()) continue;
 
     const words = source.trim().split(/\s+/);
-    if (words.length < 3) continue; // "GoodGrove", "500 mg", "5/5" - fine as-is
+    if (words.length < 2) continue; // "GoodGrove", "500 mg" - fine as-is
+    // One English word is enough: short headings like "One Simple Ingredient"
+    // slipped through a stricter threshold and stayed English on the page.
     const englishHits = (source.match(ENGLISH_WORDS) ?? []).length;
-    if (englishHits >= 2) stuck.push({ index, text: source.slice(0, 80) });
+    if (englishHits >= 1) stuck.push({ index, text: source.slice(0, 80) });
   }
   return stuck;
 }

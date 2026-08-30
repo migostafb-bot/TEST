@@ -77,19 +77,46 @@ function markJsonStrings(value, texts) {
   return value;
 }
 
+// Widgets that build their markup in JavaScript keep the copy in ordinary
+// string literals. Only sentence-like strings are touched - selectors, ids,
+// class names and URLs are left alone so the code still runs.
+const JS_STRING = /(['"])((?:\\.|(?!\1)[^\\\n])*)\1/g;
+
+function looksLikeProse(value) {
+  const text = value.trim();
+  if (text.split(/\s+/).length < 3) return false; // "#reviews", "flex-start"
+  if (/^[.#/]/.test(text)) return false; // selectors, paths
+  if (/[{}<>]|=>|function\s*\(/.test(text)) return false; // markup or code
+  if (/^[a-z-]+(\s+[a-z-]+)*$/.test(text) && !/[.!?,]/.test(text)) return false; // class lists
+  return isTranslatable(text);
+}
+
+function extractJsStrings(body, texts) {
+  return body.replace(JS_STRING, (whole, quote, content) => {
+    if (!looksLikeProse(content)) return whole;
+    const marker = MARKER(texts.length);
+    texts.push(content);
+    // Normalised to a double-quoted literal so the replacement can be escaped
+    // with JSON rules whatever quote the source used.
+    return `"${marker}"`;
+  });
+}
+
 export function extractJsonScripts(html, texts) {
   return html.replace(JSON_SCRIPT, (whole, open, body, close) => {
     const payload = findJsonPayload(body);
-    if (!payload) return whole;
-    const [lead, json, trail] = payload;
-    try {
-      const marked = markJsonStrings(JSON.parse(json), texts);
-      // Re-serialised through JSON.stringify, so translated text containing
-      // quotes or backslashes is escaped correctly when it is put back.
-      return `${open}${lead}${JSON.stringify(marked)}${trail}${close}`;
-    } catch {
-      return whole; // not valid JSON - leave it exactly as it was
+    if (payload) {
+      const [lead, json, trail] = payload;
+      try {
+        const marked = markJsonStrings(JSON.parse(json), texts);
+        // Re-serialised through JSON.stringify, so translated text containing
+        // quotes or backslashes is escaped correctly when it is put back.
+        return `${open}${lead}${JSON.stringify(marked)}${trail}${close}`;
+      } catch {
+        // Fall through: not JSON after all, try it as JavaScript.
+      }
     }
+    return `${open}${extractJsStrings(body, texts)}${close}`;
   });
 }
 
@@ -171,6 +198,8 @@ function jsonRanges(template) {
   }
   return ranges;
 }
+// Every script body is escaped with JSON rules on the way back in: markers
+// there sit inside string literals, JSON or JavaScript alike.
 
 // Puts translated strings back. A missing or empty translation falls back to
 // the original, so a short model response degrades rather than blanking text.

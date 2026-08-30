@@ -111,3 +111,31 @@ Run an import and confirm:
 2. Fix one thing, push, re-import.
 3. Guessing costs more than measuring — every wrong assumption here cost a
    full import cycle.
+
+## Opening message for a new chat
+
+Paste this into a fresh Claude session, after running `git pull`:
+
+```
+I'm continuing a project. Read HANDOFF.md and CLAUDE.md in this repo first,
+then continue from "Where it got to".
+
+Repo: ~/shopify-link, branch claude/link-shopify-store-qnzneh
+
+The immediate task: the last commit is untested against the store. Run
+  npm run import -- --replace https://trygoodgrove.com/products/tart-cherry-extract
+then verify on the product page:
+  1. only one quantity selector and one add-to-cart button
+  2. the button is not "ÉPUISÉ"
+  3. 2 units charges 49,90 € at checkout, 3 units charges 59,90 €
+
+Always give me easy numbered steps. Use npm run inspect -- <url> before
+guessing — it costs no usage.
+```
+
+## If the terminal forgets everything
+
+Switching Claude accounts does not affect this project. The Shopify
+connection lives in `.env` and `.shopify-token.json` in this folder, not in
+the Claude account. Log out, log in as anyone, and `npm run import` still
+works. Only moving to a different computer requires re-running `npm run auth`.

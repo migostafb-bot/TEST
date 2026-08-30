@@ -26,7 +26,34 @@ export function roundToEnding(amount, ending) {
   return Number((candidate >= amount ? candidate : whole + 1 + ending).toFixed(2));
 }
 
+// A fixed price ladder, when the store prices by tier rather than from the
+// competitor: SHOPIFY_FIXED_TIERS="32.90,49.90,59.90".
+export function fixedTiers() {
+  const raw = process.env.SHOPIFY_FIXED_TIERS;
+  if (!raw) return null;
+  const prices = raw
+    .split(",")
+    .map((value) => Number(String(value).trim()))
+    .filter((value) => value > 0);
+  return prices.length ? prices.map((price) => price.toFixed(2)) : null;
+}
+
 export function computePrice(referencePrice, currency) {
+  const fixed = fixedTiers();
+  if (fixed) {
+    return {
+      fixed_ladder: true,
+      tiers: fixed.map((price, index) => ({
+        quantity: index + 1,
+        price,
+        display: `${price.replace(".", ",")} €`,
+      })),
+      price: fixed[0],
+      display: `${fixed[0].replace(".", ",")} €`,
+      note: "Store prices are fixed by tier; the competitor's price is not used.",
+    };
+  }
+
   const source = Number(referencePrice);
   if (!(source > 0)) throw new Error(`Cannot price from "${referencePrice}".`);
 

@@ -75,7 +75,11 @@ job, not a rewrite:
 
 ## Pricing
 
-Never copy the competitor's price across. Call `compute_price` with the
+If `SHOPIFY_FIXED_TIERS` is set, the store's prices are fixed — `compute_price`
+returns that ladder and the competitor's price is ignored. Pass every tier to
+`create_product` as `bundles`, one variant each.
+
+Otherwise, never copy the competitor's price across. Call `compute_price` with the
 competitor's `reference_price` and `reference_currency`; it applies the store's
 rule from `.env` — exchange rate, `SHOPIFY_MARGIN_PERCENT`, and the price
 ending — and returns the euro price to pass to `create_product`. Do the
